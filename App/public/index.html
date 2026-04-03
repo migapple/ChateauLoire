@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="referrer" content="no-referrer">
+  <title>Châteaux de la Loire</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Jost:wght@400;500;600&display=swap');
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0a0c0a;--bg2:#121510;--card:#181d14;--card2:#1e2419;
+      --border:#272e22;--border2:#363e2e;
+      --gold:#c9a870;--golddim:rgba(201,168,112,.13);
+      --text:#f0ece3;--text2:#b0a890;--text3:#6a6050;--red:#cc6060;
+      --safe-top:env(safe-area-inset-top,44px);--safe-bottom:env(safe-area-inset-bottom,34px);
+      --hh:calc(56px + var(--safe-top));--nh:calc(62px + var(--safe-bottom));
+      --r:16px;--rs:10px;
+      --FD:'Cormorant Garamond',Georgia,serif;--FB:'Jost',system-ui,sans-serif;
+    }
+    body.light{--bg:#f4f0e8;--bg2:#ece7dd;--card:#fff;--card2:#f8f4ee;--border:#ddd6c8;--border2:#ccc4b4;--text:#18140c;--text2:#524840;--text3:#998c7c}
+    html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--FB);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;user-select:none}
+
+    /* ── HEADER ── */
+    #hdr{position:fixed;top:0;left:0;right:0;z-index:100;height:var(--hh);padding-top:var(--safe-top);background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding-left:20px;padding-right:16px}
+    .hl{display:flex;align-items:center;gap:10px}
+    .hlogo{color:var(--gold);font-size:20px;line-height:1}
+    #htitle{font-family:var(--FD);font-size:20px;font-weight:600;letter-spacing:.02em}
+    .hr{display:flex;gap:8px}
+    .hbtn{background:var(--card);border:1px solid var(--border);color:var(--text2);border-radius:8px;height:36px;min-width:36px;padding:0 10px;display:flex;align-items:center;justify-content:center;font-family:var(--FB);font-size:12px;font-weight:600;letter-spacing:.08em;cursor:pointer}
+    .hbtn:active{opacity:.6;transform:scale(.94)}
+
+    /* ── MAIN ── */
+    #app{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;padding-top:var(--safe-top);background:var(--bg)}
+    #main{position:fixed;top:var(--hh);bottom:var(--nh);left:0;right:0;overflow:hidden}
+    .view{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;opacity:0;pointer-events:none;transform:translateY(6px);transition:opacity .26s,transform .26s}
+    .view.on{opacity:1;pointer-events:auto;transform:none}
+
+    /* ── SEARCH & CHIPS ── */
+    .swrap{padding:14px 16px 0;position:sticky;top:0;z-index:5;background:var(--bg)}
+    .sin{position:relative}
+    .sico{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:16px;pointer-events:none}
+    #sinput{width:100%;height:44px;background:var(--card);border:1px solid var(--border);border-radius:var(--rs);padding:0 14px 0 38px;color:var(--text);font-family:var(--FB);font-size:16px;outline:none;transition:border-color .2s;-webkit-appearance:none}
+    #sinput::placeholder{color:var(--text3)}
+    #sinput:focus{border-color:var(--gold)}
+    .chips{display:flex;gap:7px;overflow-x:auto;padding:10px 0 2px;scrollbar-width:none}
+    .chips::-webkit-scrollbar{display:none}
+    .chip{flex-shrink:0;background:var(--card);border:1px solid var(--border);color:var(--text3);border-radius:20px;padding:5px 13px;font-size:12px;font-weight:500;cursor:pointer;transition:all .18s;white-space:nowrap;font-family:var(--FB)}
+    .chip.on{background:var(--golddim);border-color:var(--gold);color:var(--gold)}
+
+    /* ── CARDS ── */
+    #mlist,#flist{padding:10px 16px 16px;display:flex;flex-direction:column;gap:11px}
+    .cnt{font-size:11px;color:var(--text3);font-weight:600;letter-spacing:.07em;text-transform:uppercase;padding:0 2px 2px}
+    .mc{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;cursor:pointer;transition:transform .18s;animation:fu .3s ease both}
+    @keyframes fu{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    .mc:nth-child(2){animation-delay:.04s}.mc:nth-child(3){animation-delay:.08s}.mc:nth-child(4){animation-delay:.12s}.mc:nth-child(n+5){animation-delay:.16s}
+    .mc:active{transform:scale(.975)}
+    .mthumb{width:100%;height:180px;display:block;background:var(--border);position:relative;overflow:hidden}
+    .mthumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:opacity .4s}
+    .mcb{padding:13px 15px}
+    .mct{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+    .mcn{font-family:var(--FD);font-size:18px;font-weight:600;color:var(--text);line-height:1.2;flex:1}
+    .fbtn{background:none;border:none;font-size:21px;cursor:pointer;color:var(--text3);padding:1px 3px;flex-shrink:0;transition:color .18s,transform .14s;line-height:1}
+    .fbtn.on{color:var(--red)}.fbtn:active{transform:scale(1.35)}
+    .mcloc{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text3);margin-top:4px}
+    .mctags{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+    .tag{background:var(--golddim);border:1px solid rgba(201,168,112,.18);color:var(--gold);border-radius:4px;padding:2px 8px;font-size:11px;font-weight:500}
+
+    /* ── EMPTY ── */
+    .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:70px 32px;gap:12px;text-align:center}
+    .eico{font-size:52px;opacity:.22}
+    .etxt{color:var(--text3);font-size:15px;line-height:1.65;white-space:pre-line}
+
+    /* ── MAP ── */
+    #vmap{overflow:hidden}
+    #map{width:100%;height:100%}
+    .leaflet-tile-pane{filter:brightness(.68) saturate(.5)}
+    body.light .leaflet-tile-pane{filter:none}
+    .leaflet-popup-content-wrapper{background:var(--card)!important;color:var(--text)!important;border:1px solid var(--border)!important;border-radius:12px!important;box-shadow:0 8px 32px rgba(0,0,0,.6)!important}
+    .leaflet-popup-tip{background:var(--card)!important}
+    .leaflet-popup-close-button{color:var(--text3)!important}
+    .leaflet-control-zoom a{background:var(--card)!important;color:var(--text)!important;border-color:var(--border)!important}
+    .pname{font-family:var(--FD);font-size:15px;font-weight:600}
+    .ptype{font-size:11px;color:var(--gold);margin-top:3px}
+    .pbtn{display:block;margin-top:8px;width:100%;text-align:center;background:var(--golddim);border:1px solid rgba(201,168,112,.3);color:var(--gold);border-radius:6px;padding:5px 10px;font-size:12px;font-family:var(--FB);font-weight:500;cursor:pointer}
+
+    /* ── DETAIL ── */
+    .dback{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--bg);border-bottom:1px solid var(--border);cursor:pointer}
+    .dbacklbl{font-size:15px;color:var(--gold);font-weight:500}
+    .dhero-wrap{width:100%;height:260px;background:var(--border);position:relative;overflow:hidden}
+    .dhero-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:opacity .4s}
+    .dbody{padding:20px 20px 40px}
+    .dr1{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px}
+    .dname{font-family:var(--FD);font-size:26px;font-weight:600;line-height:1.2;flex:1}
+    .dfav{background:var(--card);border:1px solid var(--border);border-radius:10px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;color:var(--text3);flex-shrink:0}
+    .dfav.on{color:var(--red);border-color:rgba(204,96,96,.3)}.dfav:active{transform:scale(.88)}
+    .dtags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+    .ddesc{font-size:15px;line-height:1.68;color:var(--text2);margin-bottom:20px}
+    .dacts{display:flex;gap:10px;margin-bottom:18px}
+    .abtn{flex:1;height:48px;border:none;border-radius:var(--rs);font-family:var(--FB);font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:opacity .18s}
+    .abtn:active{opacity:.75;transform:scale(.97)}
+    .agold{background:var(--gold);color:#0a0c0a}
+    .aplain{background:var(--card);border:1px solid var(--border);color:var(--text)}
+    .iblock{background:var(--card);border:1px solid var(--border);border-radius:var(--rs);overflow:hidden;margin-bottom:12px}
+    .irow{display:flex;align-items:flex-start;gap:12px;padding:13px 15px;border-bottom:1px solid var(--border)}
+    .irow:last-child{border-bottom:none}
+    .iico{font-size:15px;width:20px;flex-shrink:0;opacity:.55;margin-top:2px}
+    .ilbl{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px}
+    .ival{font-size:14px;color:var(--text);line-height:1.5}
+    .igps{font-size:12px;color:var(--text3);margin-top:2px}
+    .atttl{font-family:var(--FD);font-size:20px;font-weight:600;margin:22px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+    .ascroll{display:flex;gap:11px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+    .ascroll::-webkit-scrollbar{display:none}
+    .ac{flex-shrink:0;width:148px;background:var(--card);border:1px solid var(--border);border-radius:var(--rs);overflow:hidden}
+    .acthumb{width:148px;height:110px;background:var(--border);position:relative;overflow:hidden}
+    .acthumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:opacity .4s}
+    .acinfo{padding:8px 10px 11px}
+    .acname{font-family:var(--FD);font-size:13px;font-weight:600;line-height:1.3}
+    .acar{font-size:11px;color:var(--text3);margin-top:3px;line-height:1.35}
+    .acyr{font-size:10px;color:var(--gold);margin-top:3px;opacity:.85}
+
+    /* ── NAV ── */
+    #nav{position:fixed;bottom:0;left:0;right:0;z-index:100;height:var(--nh);padding-bottom:var(--safe-bottom);background:var(--bg2);border-top:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-around}
+    .nb{flex:1;height:62px;background:none;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;color:var(--text3);transition:color .18s;position:relative}
+    .nb.on{color:var(--gold)}.nb:active{opacity:.65}
+    .nblbl{font-size:10px;font-weight:500;letter-spacing:.05em;text-transform:uppercase}
+    .ndot{position:absolute;top:9px;right:calc(50% - 15px);width:6px;height:6px;background:var(--gold);border-radius:50%;display:none}
+    .ndot.on{display:block}
+
+    /* ── SETTINGS ── */
+    .sov{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.55);display:none;align-items:flex-end}
+    .sov.on{display:flex}
+    .sht{width:100%;background:var(--bg2);border-top:1px solid var(--border);border-radius:20px 20px 0 0;padding-bottom:var(--safe-bottom);transform:translateY(100%);transition:transform .32s cubic-bezier(.4,0,.2,1)}
+    .sov.on .sht{transform:none}
+    .shd{display:flex;align-items:center;justify-content:space-between;padding:20px 20px 14px;border-bottom:1px solid var(--border)}
+    .sttl{font-family:var(--FD);font-size:20px;font-weight:600}
+    .sclose{background:var(--card);border:1px solid var(--border);color:var(--text2);width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer}
+    .srow{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
+    .slbl{font-size:15px}
+    .tog{position:relative;width:48px;height:28px;flex-shrink:0}
+    .tog input{opacity:0;width:0;height:0}
+    .togs{position:absolute;inset:0;background:var(--border2);border-radius:14px;cursor:pointer;transition:background .22s}
+    .togs::before{content:'';position:absolute;width:20px;height:20px;left:4px;top:4px;background:#fff;border-radius:50%;transition:transform .22s;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+    .tog input:checked+.togs{background:var(--gold)}
+    .tog input:checked+.togs::before{transform:translateX(20px)}
+
+    /* ── NOS AUTRES APPS ── */
+    .oas{padding:16px 20px 4px}
+    .oat{font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+    .oar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border-radius:10px;text-decoration:none;border:1px solid var(--border);margin-bottom:8px;cursor:pointer}
+    .oar:last-child{margin-bottom:0}
+    .oaem{font-size:1.4rem;width:32px;text-align:center;flex-shrink:0}
+    .oainfo{flex:1}
+    .oaname{font-weight:600;color:var(--text);font-size:.9rem}
+    .oasub{font-size:.75rem;color:var(--text3)}
+    .oaarr{color:var(--gold);font-size:1.1rem;flex-shrink:0}
+
+    /* ── TOAST ── */
+    /* ── QUIZ ── */
+    #vquiz{padding:0}
+    .qwrap{padding:20px 20px 40px;display:flex;flex-direction:column;gap:0}
+    .qhdr{text-align:center;padding:24px 0 20px}
+    .qhdr-ico{font-size:48px;margin-bottom:8px}
+    .qhdr-title{font-family:var(--FD);font-size:26px;font-weight:600;color:var(--text)}
+    .qhdr-sub{font-size:13px;color:var(--text3);margin-top:5px}
+    .qstart{display:block;width:100%;margin-top:20px;height:52px;background:var(--gold);color:#0a0c0a;border:none;border-radius:var(--rs);font-family:var(--FB);font-size:16px;font-weight:600;cursor:pointer}
+    .qstart:active{opacity:.8}
+
+    .qgame{display:none;flex-direction:column;gap:0}
+    .qgame.on{display:flex}
+    .qprog-bar{height:3px;background:var(--border);border-radius:2px;margin-bottom:20px}
+    .qprog-fill{height:3px;background:var(--gold);border-radius:2px;transition:width .4s}
+    .qnum{font-size:11px;color:var(--text3);font-weight:600;letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px;text-align:center}
+    .qquestion{font-family:var(--FD);font-size:21px;font-weight:600;line-height:1.35;color:var(--text);text-align:center;min-height:80px;margin-bottom:24px}
+    .qchoices{display:flex;flex-direction:column;gap:10px}
+    .qchoice{background:var(--card);border:1.5px solid var(--border);border-radius:var(--rs);padding:14px 18px;font-family:var(--FB);font-size:14px;color:var(--text);cursor:pointer;text-align:left;transition:all .18s;line-height:1.4}
+    .qchoice:active{transform:scale(.98)}
+    .qchoice.correct{background:rgba(100,180,100,.15);border-color:#64b464;color:#8ed48e}
+    .qchoice.wrong{background:rgba(204,96,96,.12);border-color:var(--red);color:#e08080}
+    .qchoice.disabled{pointer-events:none;opacity:.5}
+    .qfeedback{margin-top:16px;padding:13px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--rs);font-size:13px;color:var(--text2);line-height:1.55;display:none}
+    .qfeedback.on{display:block}
+    .qnext{display:block;width:100%;margin-top:16px;height:48px;background:var(--golddim);border:1px solid rgba(201,168,112,.3);color:var(--gold);border-radius:var(--rs);font-family:var(--FB);font-size:14px;font-weight:600;cursor:pointer;display:none}
+    .qnext.on{display:block}
+    .qnext:active{opacity:.75}
+
+    .qresult{display:none;flex-direction:column;align-items:center;padding:20px 0 0;text-align:center}
+    .qresult.on{display:flex}
+    .qscore-ico{font-size:56px;margin-bottom:12px}
+    .qscore-num{font-family:var(--FD);font-size:52px;font-weight:600;color:var(--gold);line-height:1}
+    .qscore-lbl{font-size:14px;color:var(--text3);margin-top:4px}
+    .qscore-msg{font-size:15px;color:var(--text2);line-height:1.6;margin-top:16px;max-width:280px}
+    .qreplay{display:block;width:100%;margin-top:24px;height:52px;background:var(--gold);color:#0a0c0a;border:none;border-radius:var(--rs);font-family:var(--FB);font-size:15px;font-weight:600;cursor:pointer}
+    .qreplay:active{opacity:.8}
+
+    #toast{position:fixed;bottom:calc(var(--nh) + 14px);left:50%;transform:translateX(-50%) translateY(18px);background:var(--card2);border:1px solid var(--border2);color:var(--text);padding:9px 20px;border-radius:20px;font-size:13px;font-weight:500;z-index:400;opacity:0;transition:opacity .26s,transform .26s;pointer-events:none;white-space:nowrap;box-shadow:0 8px 32px rgba(0,0,0,.6)}
+    #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+  </style>
+</head>
+<body>
+
+<header id="hdr">
+  <div class="hl">
+    <span class="hlogo">🏰</span>
+    <span id="htitle">Châteaux de la Loire</span>
+  </div>
+  <div class="hr">
+    <button id="blang" class="hbtn">FR</button>
+    <button id="bset" class="hbtn">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="2.2"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.1 3.1l1.1 1.1M11.8 11.8l1.1 1.1M12.9 3.1l-1.1 1.1M4.2 11.8l-1.1 1.1"/></svg>
+    </button>
+  </div>
+</header>
+
+<main id="main">
+  <div id="vlist" class="view on">
+    <div class="swrap">
+      <div class="sin">
+        <span class="sico">⌕</span>
+        <input id="sinput" type="search" placeholder="Rechercher un château…" autocomplete="off" autocorrect="off" spellcheck="false">
+      </div>
+      <div class="chips" id="chips"></div>
+    </div>
+    <div id="mlist"></div>
+  </div>
+  <div id="vmap" class="view"><div id="map"></div></div>
+  <div id="vfavorites" class="view"><div id="flist"></div></div>
+  <div id="vquiz" class="view">
+    <div class="qwrap">
+      <!-- ACCUEIL QUIZ -->
+      <div id="qhome">
+        <div class="qhdr">
+          <div class="qhdr-ico">🏆</div>
+          <div class="qhdr-title" id="qtitle">Quiz</div>
+          <div class="qhdr-sub" id="qsub">10 questions sur les châteaux</div>
+        </div>
+        <button class="qstart" id="qstart-btn">Commencer le quiz</button>
+      </div>
+      <!-- JEU -->
+      <div id="qgame" class="qgame">
+        <div class="qprog-bar"><div class="qprog-fill" id="qprog-fill"></div></div>
+        <div class="qnum" id="qnum">Question 1 / 10</div>
+        <div class="qquestion" id="qquestion"></div>
+        <div class="qchoices" id="qchoices"></div>
+        <div class="qfeedback" id="qfeedback"></div>
+        <button class="qnext" id="qnext">Suivant →</button>
+      </div>
+      <!-- RÉSULTAT -->
+      <div id="qresult" class="qresult">
+        <div class="qscore-ico" id="qscore-ico">🏅</div>
+        <div class="qscore-num" id="qscore-num">0</div>
+        <div class="qscore-lbl" id="qscore-lbl">/ 10</div>
+        <div class="qscore-msg" id="qscore-msg"></div>
+        <button class="qreplay" id="qreplay">Rejouer</button>
+      </div>
+    </div>
+  </div>
+  <div id="vdetail" class="view"><div id="dinn"></div></div>
+</main>
+
+<nav id="nav">
+  <button class="nb on" data-v="list">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="12" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="12" width="7" height="7" rx="1.5"/><rect x="12" y="12" width="7" height="7" rx="1.5"/></svg>
+    <span class="nblbl" id="nl0">Liste</span>
+  </button>
+  <button class="nb" data-v="map">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="1,5 8,2 14,5 21,2 21,17 14,20 8,17 1,20"/><line x1="8" y1="2" x2="8" y2="17"/><line x1="14" y1="5" x2="14" y2="20"/></svg>
+    <span class="nblbl" id="nl1">Carte</span>
+  </button>
+  <button class="nb" data-v="favorites">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 19.5L2.5 11C1.1 9.6 1.1 7.4 2.5 6 3.9 4.6 6.1 4.6 7.5 6L11 9.5 14.5 6c1.4-1.4 3.6-1.4 5 0 1.4 1.4 1.4 3.6 0 5z"/></svg>
+    <span class="nblbl" id="nl2">Favoris</span>
+    <span class="ndot" id="ndot"></span>
+  </button>
+  <button class="nb" data-v="quiz">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="9"/><path d="M8.5 8.5a2.8 2.8 0 0 1 5.2 1c0 2-3 2.5-3 4.5"/><circle cx="11" cy="17" r=".7" fill="currentColor" stroke="none"/></svg>
+    <span class="nblbl" id="nl3">Quiz</span>
+  </button>
+</nav>
+
+<!-- SETTINGS -->
+<div class="sov" id="sov">
+  <div class="sht">
+    <div class="shd"><span class="sttl" id="sttl">Paramètres</span><button class="sclose" id="sclose">✕</button></div>
+    <div class="srow"><span class="slbl" id="sdark">Mode sombre</span><label class="tog"><input type="checkbox" id="tdark" checked><span class="togs"></span></label></div>
+    <div class="srow" style="flex-direction:column;align-items:flex-start;gap:3px">
+      <span style="font-size:13px;color:var(--text2)">Châteaux de la Loire</span>
+      <span style="font-size:11px;color:var(--text3)">Version 1.0 · © 2025 Michel Garlandat</span>
+    </div>
+    <div class="oas">
+      <div class="oat">📱 Nos autres apps</div>
+      <div class="oar" onclick="window.open('https://apps.apple.com/fr/app/id6761323546','_blank')">
+        <span class="oaem">👑</span><div class="oainfo"><div class="oaname">Rois de France</div><div class="oasub">44 souverains, toutes dynasties</div></div><span class="oaarr">›</span>
+      </div>
+      <div class="oar" onclick="window.open('https://apps.apple.com/fr/app/id6761424444','_blank')">
+        <span class="oaem">🎖️</span><div class="oainfo"><div class="oaname">Présidents de la République</div><div class="oasub">De MacMahon à nos jours</div></div><span class="oaarr">›</span>
+      </div>
+      <div class="oar" onclick="window.open('https://apps.apple.com/fr/app/id6761334922','_blank')">
+        <span class="oaem">🪑</span><div class="oainfo"><div class="oaname">Académie française</div><div class="oasub">Les Immortels depuis 1635</div></div><span class="oaarr">›</span>
+      </div>
+      <div class="oar" onclick="window.open('https://apps.apple.com/fr/app/id6760890465','_blank')">
+        <span class="oaem">🏛</span><div class="oainfo"><div class="oaname">Musées de Paris</div><div class="oasub">37 musées de la capitale</div></div><span class="oaarr">›</span>
+      </div>
+      <div class="oar" onclick="window.open('https://apps.apple.com/fr/app/id6760751055','_blank')">
+        <span class="oaem">🪦</span><div class="oainfo"><div class="oaname">Cimetières Paris</div><div class="oasub">Père-Lachaise &amp; Montparnasse</div></div><span class="oaarr">›</span>
+      </div>
+      <div class="oar" onclick="window.open('https://apps.apple.com/fr/app/id6760929391','_blank')">
+        <span class="oaem">🎭</span><div class="oainfo"><div class="oaname">Théâtres Paris</div><div class="oasub">39 théâtres parisiens</div></div><span class="oaarr">›</span>
+      </div>
+      <div class="oar" onclick="window.open('https://apps.apple.com/fr/app/id6761293938','_blank')">
+        <span class="oaem">🎵</span><div class="oainfo"><div class="oaname">Scènes Paris</div><div class="oasub">Salles de concert &amp; spectacle</div></div><span class="oaarr">›</span>
+      </div>
+      <div class="oar" onclick="window.open('https://apps.apple.com/fr/app/id6760126279','_blank')">
+        <span class="oaem">🍷</span><div class="oainfo"><div class="oaname">Cave Manager</div><div class="oasub">Gérez votre cave à vin</div></div><span class="oaarr">›</span>
+      </div>
+      <div class="oar" onclick="window.open('https://apps.apple.com/fr/app/id6759219383','_blank')">
+        <span class="oaem">❄️</span><div class="oainfo"><div class="oaname">Frigo Manager</div><div class="oasub">Zéro gaspillage alimentaire</div></div><span class="oaarr">›</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ─── DATA ────────────────────────────────────────────────
+const CS = [
+
+  // ═══════════════ MÉDIÉVAL ═══════════════
+  {id:1,name:{fr:"Château d'Angers",en:"Château d'Angers"},
+   address:"2 Promenade du Bout du Monde, 49100 Angers",
+   coords:{lat:47.4681,lng:-0.5583},
+   website:"https://www.chateau-angers.fr",
+   hours:{fr:"Ouvert tous les jours 9h30–18h30",en:"Open daily 9:30am–6:30pm"},
+   price:"Adulte 9 €",
+   epoque:{fr:"Médiéval",en:"Medieval"},
+   types:{fr:["Médiéval"],en:["Medieval"]},
+   wiki:"Château d'Angers",
+   description:{
+     fr:"Forteresse impressionnante du XIIIe siècle, le château d'Angers fut bâti par le roi Louis IX (Saint Louis) entre 1228 et 1238. Ses dix-sept tours en schiste ardoisier, alternant bandes de tuffeau blanc, en font l'une des plus grandes forteresses médiévales de France. Il abrite la célèbre Tenture de l'Apocalypse, le plus grand ensemble de tapisseries médiévales du monde.",
+     en:"A formidable 13th-century fortress built by King Louis IX between 1228 and 1238. Its seventeen schist towers, banded with white tuffeau, make it one of France's greatest medieval strongholds. It houses the Apocalypse Tapestry, the world's largest surviving medieval tapestry cycle."
+   },
+   highlights:[
+     {name:"Tenture de l'Apocalypse",role:"Plus grand ensemble de tapisseries médiévales du monde",year:"XIVe s.",wiki:"Tenture de l'Apocalypse"},
+     {name:"Châtelet d'entrée",role:"Tour-porte monumentale avec pont-levis",year:"XIIIe s.",wiki:"Château d'Angers"},
+     {name:"Logis royal",role:"Appartements des ducs d'Anjou",year:"XIVe-XVe s.",wiki:"Château d'Angers"}
+   ]},
+
+  {id:2,name:{fr:"Château de Chinon",en:"Château de Chinon"},
+   address:"Place du Château, 37500 Chinon",
+   coords:{lat:47.1667,lng:0.2333},
+   website:"https://forteressechinon.fr/",
+   hours:{fr:"Ouvert tous les jours 9h30–18h",en:"Open daily 9:30am–6pm"},
+   price:"Adulte 9,50 €",
+   epoque:{fr:"Médiéval",en:"Medieval"},
+   types:{fr:["Médiéval"],en:["Medieval"]},
+   wiki:"Château de Chinon",
+   description:{
+     fr:"Perchée sur un éperon rocheux dominant la Vienne, la forteresse royale de Chinon est l'une des plus vastes du Moyen Âge. C'est ici, en 1429, que Jeanne d'Arc reconnut le dauphin Charles VII dissimulé parmi ses courtisans, événement fondateur de la reconquête du royaume de France.",
+     en:"Perched on a rocky spur above the Vienne river, Chinon was one of the largest medieval fortresses in France. It was here in 1429 that Joan of Arc identified the disguised Dauphin Charles VII among his courtiers — the pivotal moment that launched the French reconquest."
+   },
+   highlights:[
+     {name:"Salle du trône",role:"Lieu de la rencontre entre Jeanne d'Arc et Charles VII",year:"1429",wiki:"Château de Chinon"},
+     {name:"Tour du Coudray",role:"Prison des Templiers en 1308",year:"XIIIe s.",wiki:"Château de Chinon"},
+     {name:"Tour de l'Horloge",role:"Musée Jeanne d'Arc",year:"XIVe s.",wiki:"Château de Chinon"}
+   ]},
+
+  {id:3,name:{fr:"Château de Loches",en:"Château de Loches"},
+   address:"Rue du Château, 37600 Loches",
+   coords:{lat:47.1283,lng:1.0028},
+   website:"https://www.loches-valdeloire.com",
+   hours:{fr:"Ouvert tous les jours 9h–19h",en:"Open daily 9am–7pm"},
+   price:"Adulte 9 €",
+   epoque:{fr:"Médiéval",en:"Medieval"},
+   types:{fr:["Médiéval"],en:["Medieval"]},
+   wiki:"Château de Loches",
+   description:{
+     fr:"Sité sur un promontoire dominant l'Indre, Loches est l'un des plus complets ensembles médiévaux de France. Son donjon du XIe siècle, parmi les plus hauts d'Europe, côtoie le logis royal où Agnès Sorel, première favorite officielle d'un roi de France, résida auprès de Charles VII.",
+     en:"Sitting on a promontory above the Indre river, Loches is one of France's most complete medieval complexes. Its 11th-century keep, among the tallest in Europe, stands alongside the royal lodge where Agnès Sorel — France's first official royal mistress — resided with Charles VII."
+   },
+   highlights:[
+     {name:"Donjon du XIe siècle",role:"L'un des plus hauts donjons d'Europe",year:"XIe s.",wiki:"Château de Loches"},
+     {name:"Tombeau d'Agnès Sorel",role:"Première favorite officielle d'un roi de France",year:"1450",wiki:"Château de Loches"},
+     {name:"Oratoire d'Anne de Bretagne",role:"Triptyque de l'Annonciation",year:"XVIe s.",wiki:"Château de Loches"}
+   ]},
+
+  {id:4,name:{fr:"Château de Langeais",en:"Château de Langeais"},
+   address:"2 Rue Anne de Bretagne, 37130 Langeais",
+   coords:{lat:47.3267,lng:0.4058},
+   website:"https://www.chateau-de-langeais.com",
+   hours:{fr:"Ouvert tous les jours 9h30–18h30",en:"Open daily 9:30am–6:30pm"},
+   price:"Adulte 12 €",
+   epoque:{fr:"Médiéval",en:"Medieval"},
+   types:{fr:["Médiéval"],en:["Medieval"]},
+   wiki:"Château de Langeais",
+   description:{
+     fr:"Édifié entre 1465 et 1469 par ordre de Louis XI, Langeais est l'un des rares châteaux médiévaux à avoir conservé son intérieur d'origine. Il fut le théâtre du mariage secret de Charles VIII et d'Anne de Bretagne le 6 décembre 1491, unissant la Bretagne à la France.",
+     en:"Built between 1465 and 1469 by order of Louis XI, Langeais is one of the rare medieval castles to have preserved its original interiors. It was the setting for the secret marriage of Charles VIII and Anne of Brittany on 6 December 1491, uniting Brittany with France."
+   },
+   highlights:[
+     {name:"Salle du mariage",role:"Diorama du mariage de Charles VIII et Anne de Bretagne",year:"1491",wiki:"Château de Langeais"},
+     {name:"Grande salle médiévale",role:"Mobilier et tapisseries d'époque",year:"XVe s.",wiki:"Château de Langeais"},
+     {name:"Chemin de ronde",role:"Vue panoramique sur la Loire et le village",year:"XVe s.",wiki:"Château de Langeais"}
+   ]},
+
+  {id:5,name:{fr:"Château de Saumur",en:"Château de Saumur"},
+   address:"Esplanade du Château, 49400 Saumur",
+   coords:{lat:47.2597,lng:-0.0736},
+   website:"https://www.chateau-saumur.fr",
+   hours:{fr:"Ouvert tous les jours 10h–18h",en:"Open daily 10am–6pm"},
+   price:"Adulte 10 €",
+   epoque:{fr:"Médiéval",en:"Medieval"},
+   types:{fr:["Médiéval"],en:["Medieval"]},
+   wiki:"Château de Saumur",
+   description:{
+     fr:"Surgissant au-dessus de la confluence de la Loire et du Thouet, le château de Saumur est l'une des icônes du Val de Loire, immortalisé dans les Très Riches Heures du duc de Berry. Résidence des ducs d'Anjou au XIVe siècle, il abrite aujourd'hui le musée des Arts décoratifs et le musée du Cheval.",
+     en:"Rising above the confluence of the Loire and Thouet rivers, Saumur is one of the Loire Valley's icons, immortalised in the Très Riches Heures du Duc de Berry. A 14th-century residence of the Dukes of Anjou, it now houses a decorative arts museum and an equestrian museum."
+   },
+   highlights:[
+     {name:"Tour du château",role:"Vue à 360° sur la Loire et les vignobles",year:"XIVe s.",wiki:"Château de Saumur"},
+     {name:"Musée du Cheval",role:"Histoire et art équestre",year:"XIXe s.",wiki:"Château de Saumur"},
+     {name:"Façade flamboyante",role:"Lucarnes et tourelles de style gothique flamboyant",year:"XVe s.",wiki:"Château de Saumur"}
+   ]},
+
+  {id:6,name:{fr:"Château de Montsoreau",en:"Château de Montsoreau"},
+   address:"2 Allée Jeanne Papin, 49730 Montsoreau",
+   coords:{lat:47.2156,lng:-0.0592},
+   website:"https://www.chateau-montsoreau.com",
+   hours:{fr:"Ouvert tous les jours 10h–19h",en:"Open daily 10am–7pm"},
+   price:"Adulte 10 €",
+   epoque:{fr:"Médiéval",en:"Medieval"},
+   types:{fr:["Médiéval"],en:["Medieval"]},
+   wiki:"Château de Montsoreau",
+   description:{
+     fr:"Bâti au XVe siècle à la confluence de la Loire et de la Vienne, Montsoreau est l'un des rares châteaux à avoir été construit directement dans le lit du fleuve. Immortalisé par le roman d'Alexandre Dumas, il abrite désormais un musée d'art contemporain dédié à la scène artistique du Moyen-Orient.",
+     en:"Built in the 15th century at the confluence of the Loire and Vienne rivers, Montsoreau is one of the rare castles built directly in the riverbed. Immortalised in Alexandre Dumas's novel, it now houses a contemporary art museum dedicated to the Middle Eastern art scene."
+   },
+   highlights:[
+     {name:"Porte flamboyante",role:"Chef-d'œuvre du gothique flamboyant",year:"XVe s.",wiki:"Château de Montsoreau"},
+     {name:"Musée d'art contemporain",role:"Scène artistique du Moyen-Orient",year:"2016",wiki:"Château de Montsoreau"},
+     {name:"Vue sur la confluence",role:"Loire et Vienne se rejoignent au pied du château",year:"XVe s.",wiki:"Château de Montsoreau"}
+   ]},
+
+  {id:7,name:{fr:"Château de Châteaudun",en:"Château de Châteaudun"},
+   address:"La Montagne, 28200 Châteaudun",
+   coords:{lat:48.0719,lng:1.3375},
+   website:"https://www.chateau-de-chateaudun.fr",
+   hours:{fr:"Ouvert tous les jours 9h30–18h30",en:"Open daily 9:30am–6:30pm"},
+   price:"Adulte 8 €",
+   epoque:{fr:"Médiéval",en:"Medieval"},
+   types:{fr:["Médiéval"],en:["Medieval"]},
+   wiki:"Château de Châteaudun",
+   description:{
+     fr:"Dominant le Loir d'une hauteur de 45 mètres, Châteaudun est l'un des premiers châteaux à trahir l'influence de la Renaissance italienne en France. Propriété de Jean de Dunois, compagnon de Jeanne d'Arc, il présente une architecture de transition entre le gothique flamboyant et les premières formes Renaissance.",
+     en:"Dominating the Loir river from 45 metres up, Châteaudun is one of the first castles to reveal Italian Renaissance influence in France. Owned by Jean de Dunois, companion of Joan of Arc, its architecture bridges flamboyant Gothic and early Renaissance forms."
+   },
+   highlights:[
+     {name:"Sainte-Chapelle",role:"Statues des apôtres, chef-d'œuvre de la sculpture gothique",year:"XVe s.",wiki:"Château de Châteaudun"},
+     {name:"Donjon circulaire",role:"Vestige du château du XIe siècle",year:"XIIe s.",wiki:"Château de Châteaudun"},
+     {name:"Grande salle des États",role:"Tapisseries flamandes du XVIe siècle",year:"XVe s.",wiki:"Château de Châteaudun"}
+   ]},
+
+  {id:8,name:{fr:"Château du Plessis-Bourré",en:"Château du Plessis-Bourré"},
+   address:"49460 Écuillé",
+   coords:{lat:47.5458,lng:-0.4939},
+   website:"https://www.plessis-bourre.com",
+   hours:{fr:"Ouvert du mardi au dimanche 10h–18h",en:"Open Tue–Sun 10am–6pm"},
+   price:"Adulte 13 €",
+   epoque:{fr:"Médiéval",en:"Medieval"},
+   types:{fr:["Médiéval"],en:["Medieval"]},
+   wiki:"Château du Plessis-Bourré",
+   description:{
+     fr:"Édifié entre 1468 et 1473 par Jean Bourré, trésorier de Louis XI, le Plessis-Bourré est un véritable château-fort entouré de larges douves. Parfaitement conservé, il offre un exemple rarissime de l'architecture gothique civile de la fin du XVe siècle. Son plafond de la salle des gardes révèle des tableautins aux sujets alchimiques et énigmatiques.",
+     en:"Built between 1468 and 1473 by Jean Bourré, treasurer to Louis XI, Plessis-Bourré is a true moated fortress. Extraordinarily well-preserved, it offers a rare example of late-15th-century civil Gothic architecture. Its guardroom ceiling reveals small panels with enigmatic alchemical imagery."
+   },
+   highlights:[
+     {name:"Plafond de la salle des gardes",role:"80 tableautins aux scènes alchimiques et allégoriques",year:"XVe s.",wiki:"Château du Plessis-Bourré"},
+     {name:"Douves et pont-levis",role:"Fossés de 40 mètres de large, toujours en eau",year:"XVe s.",wiki:"Château du Plessis-Bourré"},
+     {name:"Donjon d'angle",role:"Tour carrée du château primitif",year:"XIIe s.",wiki:"Château du Plessis-Bourré"}
+   ]},
+
+  // ═══════════════ RENAISSANCE ═══════════════
+  {id:9,name:{fr:"Château de Chambord",en:"Château de Chambord"},
+   address:"41250 Chambord",
+   coords:{lat:47.6162,lng:1.5168},
+   website:"https://www.chambord.org",
+   hours:{fr:"Ouvert tous les jours 9h–19h",en:"Open daily 9am–7pm"},
+   price:"Adulte 14,50 €",
+   epoque:{fr:"Renaissance",en:"Renaissance"},
+   types:{fr:["Renaissance"],en:["Renaissance"]},
+   wiki:"Château de Chambord",
+   description:{
+     fr:"Chef-d'œuvre de la Renaissance française, Chambord est le plus vaste château du Val de Loire. Commandé par François Ier en 1519, sans doute avec la complicité de Léonard de Vinci, il déploie 426 pièces, 84 escaliers et 365 cheminées. Son escalier à double révolution, où deux personnes peuvent se croiser sans jamais se voir, en reste le symbole le plus célèbre.",
+     en:"The masterpiece of French Renaissance architecture, Chambord is the Loire Valley's grandest château. Commissioned by Francis I in 1519, possibly with Leonardo da Vinci's input, it boasts 426 rooms, 84 staircases and 365 chimneys. Its double-helix staircase — where two people can pass without meeting — remains its most iconic feature."
+   },
+   highlights:[
+     {name:"Escalier à double révolution",role:"Attribué à Léonard de Vinci",year:"1519",wiki:"Escalier à double révolution du château de Chambord"},
+     {name:"Terrasses & lanternon",role:"Forêt de cheminées sur 156 m de façade",year:"XVIe s.",wiki:"Château de Chambord"},
+     {name:"Appartements de François Ier",role:"Décor Renaissance d'origine",year:"XVIe s.",wiki:"Château de Chambord"}
+   ]},
+
+  {id:10,name:{fr:"Château de Chenonceau",en:"Château de Chenonceau"},
+   address:"37150 Chenonceau",
+   coords:{lat:47.3245,lng:1.0703},
+   website:"https://www.chenonceau.com",
+   hours:{fr:"Ouvert tous les jours 9h–19h",en:"Open daily 9am–7pm"},
+   price:"Adulte 17 €",
+   epoque:{fr:"Renaissance",en:"Renaissance"},
+   types:{fr:["Renaissance"],en:["Renaissance"]},
+   wiki:"Château de Chenonceau",
+   description:{
+     fr:"Surnommé le « château des Dames », Chenonceau fut façonné par des femmes illustres : Katherine Briçonnet le fit bâtir en 1514, Diane de Poitiers y reçut le pont sur le Cher en cadeau d'Henri II, et Catherine de Médicis le transforma en galerie. Son reflet dans les eaux du Cher en fait le château le plus visité de France après Versailles.",
+     en:"Known as the 'Ladies' Castle', Chenonceau was shaped by remarkable women: Katherine Briçonnet built it in 1514, Diane de Poitiers received the bridge as a gift from Henri II, and Catherine de Medici turned it into a gallery. Its reflection in the Cher makes it France's most-visited château after Versailles."
+   },
+   highlights:[
+     {name:"Grande Galerie",role:"45 mètres au-dessus du Cher, style Renaissance",year:"1576",wiki:"Château de Chenonceau"},
+     {name:"Jardin de Diane de Poitiers",role:"Parterre à la française dessiné au XVIe s.",year:"1551",wiki:"Château de Chenonceau"},
+     {name:"Chambre de Catherine de Médicis",role:"Décor d'origine, tapisseries flamandes",year:"XVIe s.",wiki:"Château de Chenonceau"}
+   ]},
+
+  {id:11,name:{fr:"Château d'Amboise",en:"Château d'Amboise"},
+   address:"Montée de l'Emir Abd-el-Kader, 37400 Amboise",
+   coords:{lat:47.4133,lng:0.9878},
+   website:"https://www.chateau-amboise.com",
+   hours:{fr:"Ouvert tous les jours 9h–18h",en:"Open daily 9am–6pm"},
+   price:"Adulte 16,50 €",
+   epoque:{fr:"Renaissance",en:"Renaissance"},
+   types:{fr:["Renaissance"],en:["Renaissance"]},
+   wiki:"Château d'Amboise",
+   description:{
+     fr:"Berceau de la Renaissance française, Amboise fut la résidence préférée de Charles VIII et François Ier. C'est ici que Léonard de Vinci passa les trois dernières années de sa vie, invité par le roi, et qu'il mourut en 1519. La chapelle Saint-Hubert abrite sa sépulture. La terrasse offre une vue majestueuse sur la Loire.",
+     en:"The cradle of the French Renaissance, Amboise was the favourite residence of Charles VIII and Francis I. It was here that Leonardo da Vinci spent his last three years, invited by the king, and died in 1519. The Saint-Hubert chapel holds his tomb. The terrace offers a majestic view over the Loire."
+   },
+   highlights:[
+     {name:"Chapelle Saint-Hubert",role:"Sépulture de Léonard de Vinci",year:"1479",wiki:"Chapelle Saint-Hubert d'Amboise"},
+     {name:"Tour des Minimes",role:"Rampe d'accès carrossable spiralée",year:"XVe s.",wiki:"Château d'Amboise"},
+     {name:"Terrasse royale",role:"Panorama sur la Loire et la ville",year:"XVe s.",wiki:"Château d'Amboise"}
+   ]},
+
+  {id:12,name:{fr:"Château royal de Blois",en:"Château Royal de Blois"},
+   address:"6 Place du Château, 41000 Blois",
+   coords:{lat:47.5864,lng:1.3311},
+   website:"https://www.chateaudeblois.fr",
+   hours:{fr:"Ouvert tous les jours 9h–18h30",en:"Open daily 9am–6:30pm"},
+   price:"Adulte 14 €",
+   epoque:{fr:"Renaissance",en:"Renaissance"},
+   types:{fr:["Renaissance"],en:["Renaissance"]},
+   wiki:"Château de Blois",
+   description:{
+     fr:"Véritable livre d'architecture ouvert sur quatre siècles, Blois juxtapose quatre styles distincts : féodal (XIIIe), gothique flamboyant (XVe), Renaissance française (XVIe) et classique (XVIIe). C'est ici que fut assassiné le duc de Guise en 1588 sur ordre d'Henri III, et que la reine Catherine de Médicis vécut et mourut.",
+     en:"A living textbook of four centuries of architecture, Blois juxtaposes four distinct styles: feudal (13th c.), flamboyant Gothic (15th c.), French Renaissance (16th c.) and Classical (17th c.). It was here that the Duke of Guise was assassinated in 1588 on Henri III's orders, and where Queen Catherine de Medici lived and died."
+   },
+   highlights:[
+     {name:"Aile François Ier",role:"Escalier à vis de style Renaissance italienne",year:"1515",wiki:"Château royal de Blois"},
+     {name:"Cabinet de Catherine de Médicis",role:"237 panneaux dissimulant des cachettes secrètes",year:"XVIe s.",wiki:"Château royal de Blois"},
+     {name:"Aile Gaston d'Orléans",role:"Chef-d'œuvre de l'architecture classique de Mansart",year:"1635",wiki:"Château royal de Blois"}
+   ]},
+
+  {id:13,name:{fr:"Château de Villandry",en:"Château de Villandry"},
+   address:"3 Rue Principale, 37510 Villandry",
+   coords:{lat:47.3394,lng:0.5136},
+   website:"https://www.chateauvillandry.fr",
+   hours:{fr:"Ouvert tous les jours 9h–19h",en:"Open daily 9am–7pm"},
+   price:"Adulte 14,50 €",
+   epoque:{fr:"Renaissance",en:"Renaissance"},
+   types:{fr:["Renaissance"],en:["Renaissance"]},
+   wiki:"Château de Villandry",
+   description:{
+     fr:"Dernier des grands châteaux Renaissance construits sur les bords de la Loire, Villandry est surtout célèbre pour ses jardins extraordinaires, reconstitués au début du XXe siècle par le Dr Joachim Carvallo. Jardins d'eau, jardin d'ornement, potager ornemental en croix et labyrinthe forment un ensemble unique au monde.",
+     en:"The last of the great Renaissance châteaux built on the Loire, Villandry is most famous for its extraordinary gardens, recreated in the early 20th century by Dr Joachim Carvallo. Water gardens, ornamental garden, ornamental kitchen garden and maze form a unique ensemble."
+   },
+   highlights:[
+     {name:"Potager ornemental",role:"Neuf carrés aux légumes et fleurs colorés",year:"XVIe s.",wiki:"Château de Villandry"},
+     {name:"Jardin d'amour",role:"Quatre parterres symbolisant les formes de l'amour",year:"XVIe s.",wiki:"Château de Villandry"},
+     {name:"Jardin d'eau",role:"Grand miroir d'eau et bassin carré",year:"XVIe s.",wiki:"Château de Villandry"}
+   ]},
+
+  {id:14,name:{fr:"Château d'Azay-le-Rideau",en:"Château d'Azay-le-Rideau"},
+   address:"37190 Azay-le-Rideau",
+   coords:{lat:47.2636,lng:0.4664},
+   website:"https://www.azay-le-rideau.fr",
+   hours:{fr:"Ouvert tous les jours 9h30–18h",en:"Open daily 9:30am–6pm"},
+   price:"Adulte 11,50 €",
+   epoque:{fr:"Renaissance",en:"Renaissance"},
+   types:{fr:["Renaissance"],en:["Renaissance"]},
+   wiki:"Château d'Azay-le-Rideau",
+   description:{
+     fr:"Surnommé « diamant de la Renaissance » par Balzac, Azay-le-Rideau fut construit entre 1518 et 1527 sur un îlot de l'Indre par le financier Gilles Berthelot. Pionnier du style Renaissance en France, il marie les innovations italiennes — loggias, ordres antiques, escalier droit — à la tradition française des tours et machicoulis.",
+     en:"Called a 'Renaissance diamond' by Balzac, Azay-le-Rideau was built between 1518 and 1527 on an island in the Indre by the financier Gilles Berthelot. A pioneer of Renaissance style in France, it blends Italian innovations — loggias, classical orders, straight staircases — with the French tradition of towers and battlements."
+   },
+   highlights:[
+     {name:"Grand escalier intérieur",role:"Premier escalier droit à l'italienne en France",year:"1518",wiki:"Château d'Azay-le-Rideau"},
+     {name:"Reflet dans l'Indre",role:"L'un des plus beaux reflets de château du Val de Loire",year:"XVIe s.",wiki:"Château d'Azay-le-Rideau"},
+     {name:"Grande salle",role:"Cheminée monumentale et tapisseries Renaissance",year:"XVIe s.",wiki:"Château d'Azay-le-Rideau"}
+   ]},
+
+  {id:15,name:{fr:"Château de Chaumont-sur-Loire",en:"Château de Chaumont-sur-Loire"},
+   address:"Rue du Village, 41150 Chaumont-sur-Loire",
+   coords:{lat:47.4792,lng:1.1808},
+   website:"https://www.domaine-chaumont.fr",
+   hours:{fr:"Ouvert tous les jours 10h–19h",en:"Open daily 10am–7pm"},
+   price:"Adulte 19 €",
+   epoque:{fr:"Renaissance",en:"Renaissance"},
+   types:{fr:["Renaissance"],en:["Renaissance"]},
+   wiki:"Château de Chaumont-sur-Loire",
+   description:{
+     fr:"Dominant la Loire depuis son promontoire, Chaumont fut offert par Catherine de Médicis à Diane de Poitiers, qui ne s'y plut guère et le céda rapidement. Reconstruit en style gothique tardif et Renaissance entre 1465 et 1510, il accueille chaque été le Festival International des Jardins, vitrine mondiale de l'art paysager contemporain.",
+     en:"Dominating the Loire from its promontory, Chaumont was given by Catherine de Medici to Diane de Poitiers, who disliked it and quickly exchanged it. Rebuilt in late Gothic and Renaissance style between 1465 and 1510, it hosts each summer the International Garden Festival, a global showcase for contemporary landscape art."
+   },
+   highlights:[
+     {name:"Festival International des Jardins",role:"Créations paysagères contemporaines du monde entier",year:"depuis 1992",wiki:"Festival international des jardins de Chaumont-sur-Loire"},
+     {name:"Écuries somptueuses",role:"Les plus belles écuries de château en France",year:"XIXe s.",wiki:"Château de Chaumont-sur-Loire"},
+     {name:"Tour d'Amboise",role:"Vue panoramique sur la Loire",year:"XVe s.",wiki:"Château de Chaumont-sur-Loire"}
+   ]},
+
+  {id:16,name:{fr:"Château d'Ussé",en:"Château d'Ussé"},
+   address:"37420 Rigny-Ussé",
+   coords:{lat:47.2608,lng:0.2939},
+   website:"https://www.chateaudusse.fr",
+   hours:{fr:"Ouvert tous les jours 10h–18h",en:"Open daily 10am–6pm"},
+   price:"Adulte 17 €",
+   epoque:{fr:"Renaissance",en:"Renaissance"},
+   types:{fr:["Renaissance"],en:["Renaissance"]},
+   wiki:"Château d'Ussé",
+   description:{
+     fr:"Adossé à la forêt de Chinon en bordure de la Vienne, Ussé inspire Charles Perrault pour son conte de « La Belle au bois dormant ». Construit du XVe au XVIIe siècle en plusieurs campagnes, il conjugue style gothique flamboyant, Renaissance et classique. Des automates reconstituent dans ses salles la scène du conte.",
+     en:"Backed against the Chinon forest on the edge of the Vienne, Ussé inspired Charles Perrault's tale of 'Sleeping Beauty'. Built across several campaigns from the 15th to the 17th century, it combines flamboyant Gothic, Renaissance and Classical styles. Tableaux with automatons recreate the fairy tale within its rooms."
+   },
+   highlights:[
+     {name:"Chapelle Renaissance",role:"Stalles peintes, chef-d'œuvre du XVIe siècle",year:"1523",wiki:"Château d'Ussé"},
+     {name:"Appartements de la Belle au bois dormant",role:"Automates et décors du conte de Perrault",year:"XVIIe s.",wiki:"Château d'Ussé"},
+     {name:"Terrasse & jardins à la française",role:"Dessinés par Le Nôtre",year:"XVIIe s.",wiki:"Château d'Ussé"}
+   ]},
+
+  {id:17,name:{fr:"Château de Valençay",en:"Château de Valençay"},
+   address:"2 Rue de Blois, 36600 Valençay",
+   coords:{lat:47.1617,lng:1.5633},
+   website:"https://www.chateau-valencay.fr",
+   hours:{fr:"Ouvert tous les jours 10h–18h",en:"Open daily 10am–6pm"},
+   price:"Adulte 15,50 €",
+   epoque:{fr:"Renaissance",en:"Renaissance"},
+   types:{fr:["Renaissance"],en:["Renaissance"]},
+   wiki:"Château de Valençay",
+   description:{
+     fr:"Acquis en 1803 sur ordre de Napoléon par son ministre Talleyrand, Valençay fut le cadre des réceptions diplomatiques les plus fastes du Premier Empire. Débutant en style Renaissance du XVIe siècle, le château fut agrandi aux XVIIe et XVIIIe siècles. Il accueillit les princes espagnols détrônés par Napoléon de 1808 à 1814.",
+     en:"Acquired in 1803 on Napoleon's orders by his minister Talleyrand, Valençay was the setting for the most splendid diplomatic receptions of the First Empire. Starting in 16th-century Renaissance style, the castle was enlarged in the 17th and 18th centuries. It housed the Spanish princes dethroned by Napoleon from 1808 to 1814."
+   },
+   highlights:[
+     {name:"Appartements de Talleyrand",role:"Mobilier Empire d'exception",year:"XIXe s.",wiki:"Château de Valençay"},
+     {name:"Musée de l'Automobile",role:"Collection de voitures anciennes",year:"XXe s.",wiki:"Château de Valençay"},
+     {name:"Donjon Renaissance",role:"Tour ronde flanquant la façade principale",year:"XVIe s.",wiki:"Château de Valençay"}
+   ]},
+
+  {id:18,name:{fr:"Château de Gien",en:"Château de Gien"},
+   address:"Place du Château, 45500 Gien",
+   coords:{lat:47.6939,lng:2.6289},
+   website:"https://www.chateaumuseegien.fr/",
+   hours:{fr:"Ouvert du mardi au dimanche 9h30–18h",en:"Open Tue–Sun 9:30am–6pm"},
+   price:"Adulte 6,50 €",
+   epoque:{fr:"Renaissance",en:"Renaissance"},
+   types:{fr:["Renaissance"],en:["Renaissance"]},
+   wiki:"Château de Gien",
+   description:{
+     fr:"Construit en 1484 par Anne de Beaujeu, fille aînée de Louis XI, le château de Gien est l'un des premiers monuments à avoir adopté le style nouveau venu d'Italie en France. Sa façade en damier de brique et pierre est remarquable. Il abrite le musée international de la Chasse, qui témoigne d'une tradition millénaire.",
+     en:"Built in 1484 by Anne de Beaujeu, eldest daughter of Louis XI, Gien was one of the first buildings in France to adopt the new style coming from Italy. Its chequered brick-and-stone façade is striking. It houses the International Hunting Museum, bearing witness to a thousand-year tradition."
+   },
+   highlights:[
+     {name:"Façade en damier",role:"Alternance de brique rouge et de tuffeau blanc",year:"1484",wiki:"Château de Gien"},
+     {name:"Musée international de la Chasse",role:"Peintures, sculptures et armes du XVe au XXe s.",year:"1952",wiki:"Château de Gien"},
+     {name:"Vue sur la Loire",role:"Panorama sur le pont médiéval et le fleuve",year:"XVe s.",wiki:"Château de Gien"}
+   ]},
+
+  {id:19,name:{fr:"Manoir du Clos Lucé",en:"Manoir du Clos Lucé"},
+   address:"2 Rue du Clos Lucé, 37400 Amboise",
+   coords:{lat:47.4119,lng:0.9869},
+   website:"https://www.vinci-closluce.com",
+   hours:{fr:"Ouvert tous les jours 9h–19h",en:"Open daily 9am–7pm"},
+   price:"Adulte 18,50 €",
+   epoque:{fr:"Renaissance",en:"Renaissance"},
+   types:{fr:["Renaissance"],en:["Renaissance"]},
+   wiki:"Clos Lucé",
+   description:{
+     fr:"Résidence de Léonard de Vinci de 1516 à sa mort en 1519, le Clos Lucé fut offert par François Ier au grand maître florentin, qui y apporta ses carnets de dessins et ses inventions. Le manoir présente aujourd'hui des maquettes grandeur réelle de ses machines visionnaires — char d'assaut, hélicoptère, pont mobile — dans un parc de 3 hectares.",
+     en:"Leonardo da Vinci's home from 1516 until his death in 1519, the Clos Lucé was given by Francis I to the great Florentine master, who brought his notebooks and inventions. The manor now exhibits full-scale models of his visionary machines — tank, helicopter, moveable bridge — in a 3-hectare park."
+   },
+   highlights:[
+     {name:"Chambre de Léonard de Vinci",role:"Reconstituée avec ses objets personnels",year:"1519",wiki:"Manoir du Clos Lucé"},
+     {name:"Maquettes des inventions",role:"40 machines reconstituées d'après les carnets",year:"XXe s.",wiki:"Manoir du Clos Lucé"},
+     {name:"Chapelle privative",role:"Fresque attribuée à l'atelier de Léonard de Vinci",year:"XVe s.",wiki:"Manoir du Clos Lucé"}
+   ]},
+
+  {id:20,name:{fr:"Château de Meillant",en:"Château de Meillant"},
+   address:"18190 Meillant",
+   coords:{lat:46.7714,lng:2.5219},
+   website:"https://www.ville-saintaignan.com/saint-aignan-cite-exception",
+   hours:{fr:"Ouvert tous les jours 10h–12h30, 14h–18h",en:"Open daily 10am–12:30pm, 2–6pm"},
+   price:"Adulte 9,50 €",
+   epoque:{fr:"Renaissance",en:"Renaissance"},
+   types:{fr:["Renaissance"],en:["Renaissance"]},
+   wiki:"Château de Meillant",
+   description:{
+     fr:"Joyau du gothique flamboyant tardif, Meillant fut transformé au début du XVIe siècle par Charles II d'Amboise qui avait été gouverneur de Milan. Il en rapporta le goût de la Renaissance italienne, visible dans les décors de la Tour du Lion. L'ensemble mobilier médiéval et Renaissance, encore en place, en fait un témoignage exceptionnel.",
+     en:"A jewel of late flamboyant Gothic, Meillant was transformed in the early 16th century by Charles II d'Amboise, who had been governor of Milan. He brought back a taste for Italian Renaissance, visible in the Lion Tower's ornament. The medieval and Renaissance furnishings, still in place, make it an exceptional testimony."
+   },
+   highlights:[
+     {name:"Tour du Lion",role:"Décors Renaissance d'influence italienne",year:"XVIe s.",wiki:"Château de Meillant"},
+     {name:"Grande salle",role:"Mobilier et tapisseries de la fin du Moyen Âge",year:"XVe s.",wiki:"Château de Meillant"},
+     {name:"Chapelle",role:"Sculptures gothiques flamboyantes",year:"XVe s.",wiki:"Château de Meillant"}
+   ]},
+
+  {id:21,name:{fr:"Château de Fougères-sur-Bièvre",en:"Château de Fougères-sur-Bièvre"},
+   address:"19 Rue du Château, 41120 Fougères-sur-Bièvre",
+   coords:{lat:47.5483,lng:1.2253},
+   website:"https://www.chateau-fougeres.fr",
+   hours:{fr:"Ouvert du mardi au dimanche 10h–12h, 14h–17h30",en:"Open Tue–Sun 10am–noon, 2–5:30pm"},
+   price:"Adulte 6 €",
+   epoque:{fr:"Renaissance",en:"Renaissance"},
+   types:{fr:["Renaissance"],en:["Renaissance"]},
+   wiki:"Château de Fougères-sur-Bièvre",
+   description:{
+     fr:"Construit entre 1470 et 1490 par Pierre de Refuge, trésorier de Louis XI, Fougères-sur-Bièvre est l'un des rares châteaux à avoir conservé son caractère de forteresse médiévale tout en montrant les premiers signes de la Renaissance. Arcades, galeries à voûtes en berceau et lucarnes Renaissance coexistent avec les tours médiévales.",
+     en:"Built between 1470 and 1490 by Pierre de Refuge, Louis XI's treasurer, Fougères-sur-Bièvre is one of the rare castles to retain its medieval fortress character while showing the first signs of the Renaissance. Arcades, barrel-vaulted galleries and Renaissance dormers coexist with medieval towers."
+   },
+   highlights:[
+     {name:"Galerie intérieure",role:"Arcades à voûtes en berceau sur cour",year:"XVe s.",wiki:"Château de Fougères-sur-Bièvre"},
+     {name:"Donjons médiévaux",role:"Quatre tours d'angle défensives",year:"XVe s.",wiki:"Château de Fougères-sur-Bièvre"},
+     {name:"Lucarnes Renaissance",role:"Premières lucarnes à décor à l'antique",year:"XVIe s.",wiki:"Château de Fougères-sur-Bièvre"}
+   ]},
+
+  {id:22,name:{fr:"Château de Villesavin",en:"Château de Villesavin"},
+   address:"41700 Tour-en-Sologne",
+   coords:{lat:47.5286,lng:1.5267},
+   website:"https://www.chateau-de-villesavin.fr/",
+   hours:{fr:"Ouvert tous les jours 10h–18h",en:"Open daily 10am–6pm"},
+   price:"Adulte 8,50 €",
+   epoque:{fr:"Renaissance",en:"Renaissance"},
+   types:{fr:["Renaissance"],en:["Renaissance"]},
+   wiki:"Château de Villesavin",
+   description:{
+     fr:"Construit entre 1526 et 1537 par Jean Le Breton, intendant des travaux de Chambord pour François Ier, Villesavin est un trésor de la Renaissance ligérienne. Sa fontaine en marbre de Carrare, ses greniers à sel et son bassin à carpes de la cour d'honneur en font un ensemble pittoresque. Il abrite une remarquable collection de carrosses anciens.",
+     en:"Built between 1526 and 1537 by Jean Le Breton, overseer of Chambord's construction for Francis I, Villesavin is a treasure of the Loire Renaissance. Its Carrara marble fountain, salt granaries and fish pond in the main courtyard make it a picturesque ensemble. It houses a remarkable collection of antique carriages."
+   },
+   highlights:[
+     {name:"Fontaine en marbre de Carrare",role:"Bassin central de la cour d'honneur",year:"XVIe s.",wiki:"Château de Villesavin"},
+     {name:"Collection de carrosses",role:"Voitures à chevaux du XVIIe au XIXe siècle",year:"XVIIe-XIXe s.",wiki:"Château de Villesavin"},
+     {name:"Pigeonnier",role:"Colombier de 3 000 boulins, symbole de privilège seigneurial",year:"XVIe s.",wiki:"Château de Villesavin"}
+   ]},
+
+  {id:23,name:{fr:"Château de Talcy",en:"Château de Talcy"},
+   address:"41370 Talcy",
+   coords:{lat:47.8531,lng:1.4403},
+   website:"https://www.chateau-talcy.fr",
+   hours:{fr:"Ouvert du mercredi au lundi 10h–12h30, 14h–17h30",en:"Open Wed–Mon 10am–12:30pm, 2–5:30pm"},
+   price:"Adulte 6,50 €",
+   epoque:{fr:"Renaissance",en:"Renaissance"},
+   types:{fr:["Renaissance"],en:["Renaissance"]},
+   wiki:"Château de Talcy",
+   description:{
+     fr:"Demeure Renaissance discrète, Talcy est surtout célèbre pour la Cassandre Salviati que Ronsard aperçut ici en 1545 et qui inspira ses plus beaux sonnets. Propriété de la famille florentine des Salviati, il offre un rare témoignage de la vie quotidienne du XVIe siècle, avec son pressoir Renaissance, son colombier et son jardin potager historique.",
+     en:"A discreet Renaissance manor, Talcy is best known for Cassandre Salviati, whom Ronsard glimpsed here in 1545 and who inspired his finest sonnets. Owned by the Florentine Salviati family, it offers a rare glimpse of 16th-century daily life, with its Renaissance winepress, dovecote and historic kitchen garden."
+   },
+   highlights:[
+     {name:"Pressoir Renaissance",role:"L'un des plus vieux pressoirs de France encore en état",year:"XVIe s.",wiki:"Château de Talcy"},
+     {name:"Colombier",role:"800 boulins, symbole de noblesse",year:"XVIe s.",wiki:"Château de Talcy"},
+     {name:"Jardin potager historique",role:"Reconstitution d'un jardin médiéval en carrés",year:"XVIe s.",wiki:"Château de Talcy"}
+   ]},
+
+  {id:24,name:{fr:"Château du Moulin",en:"Château du Moulin"},
+   address:"41600 Lassay-sur-Croisne",
+   coords:{lat:47.3778,lng:1.6194},
+   website:"https://chateaudumoulin.fr",
+   hours:{fr:"Ouvert du lundi au samedi 14h–18h",en:"Open Mon–Sat 2–6pm"},
+   price:"Adulte 7 €",
+   epoque:{fr:"Renaissance",en:"Renaissance"},
+   types:{fr:["Renaissance"],en:["Renaissance"]},
+   wiki:"Château du Moulin",
+   description:{
+     fr:"Surnommé « la perle du Solognot », le château du Moulin fut construit entre 1480 et 1501 par Philippe du Moulin, chambellan de Charles VIII qui lui accorda la permission de bâtir en souvenir de la bataille de Fornoue. Entouré de douves en eau et de jardins, ce petit chef-d'œuvre de brique et pierre offre un reflet enchanté.",
+     en:"Nicknamed 'the pearl of the Sologne', the Château du Moulin was built between 1480 and 1501 by Philippe du Moulin, chamberlain to Charles VIII, who granted him permission to build in memory of the battle of Fornovo. Surrounded by water-filled moats and gardens, this small brick-and-stone masterpiece casts an enchanting reflection."
+   },
+   highlights:[
+     {name:"Façade de brique et pierre",role:"Damier rouge et blanc caractéristique",year:"XVe s.",wiki:"Château du Moulin (Lassay-sur-Croisne)"},
+     {name:"Douves en eau",role:"Miroir naturel autour du château",year:"XVe s.",wiki:"Château du Moulin (Lassay-sur-Croisne)"},
+     {name:"Jardin médiéval",role:"Potager et plantes médicinales d'époque",year:"XVe s.",wiki:"Château du Moulin (Lassay-sur-Croisne)"}
+   ]},
+
+  {id:25,name:{fr:"Château de Troussay",en:"Château de Troussay"},
+   address:"41700 Cheverny",
+   coords:{lat:47.5514,lng:1.3886},
+   website:"https://www.chateaudetroussay.com",
+   hours:{fr:"Ouvert du lundi au dimanche 10h–18h",en:"Open Mon–Sun 10am–6pm"},
+   price:"Adulte 8 €",
+   epoque:{fr:"Renaissance",en:"Renaissance"},
+   types:{fr:["Renaissance"],en:["Renaissance"]},
+   wiki:"Château de Troussay",
+   description:{
+     fr:"Qualifié de « plus petit des grands châteaux de la Loire », Troussay fut restauré au XIXe siècle par Louis de la Saussaye, historien d'art passionné, qui y rassembla des éléments architecturaux sauvés d'autres monuments ligériens. Avec ses 100 hectares de parc solognot, il offre un exemple intime et authentique de la vie noble du XVIe siècle.",
+     en:"Described as 'the smallest of the great Loire châteaux', Troussay was restored in the 19th century by art historian Louis de la Saussaye, who gathered here architectural elements rescued from other Loire monuments. With its 100-hectare Sologne park, it offers an intimate, authentic example of 16th-century noble life."
+   },
+   highlights:[
+     {name:"Lucarne de Villesavin",role:"Fenêtre à meneaux sauvée du château de Villesavin",year:"XVIe s.",wiki:"Château de Troussay"},
+     {name:"Grande salle",role:"Mobilier et objets des grandes demeures voisines",year:"XVIe s.",wiki:"Château de Troussay"},
+     {name:"Parc solognot",role:"100 ha de forêt et étangs typiques de la Sologne",year:"XIXe s.",wiki:"Château de Troussay"}
+   ]},
+
+  {id:26,name:{fr:"Château de Montrésor",en:"Château de Montrésor"},
+   address:"37460 Montrésor",
+   coords:{lat:47.1578,lng:1.1736},
+   website:"https://chateaudemontresor.com/",
+   hours:{fr:"Ouvert du lundi au dimanche 10h–19h",en:"Open daily 10am–7pm"},
+   price:"Adulte 8 €",
+   epoque:{fr:"Renaissance",en:"Renaissance"},
+   types:{fr:["Renaissance"],en:["Renaissance"]},
+   wiki:"Château de Montrésor",
+   description:{
+     fr:"Acquis en 1849 par le comte polonais Xavier Branicki, Montrésor conserve intact le mobilier et les collections réunies par sa famille au XIXe siècle, notamment une galerie de peintures italiennes et des souvenirs polonais. Le logis Renaissance du XVIe siècle, adossé aux remparts médiévaux, domine l'Indrois dans l'un des « plus beaux villages de France ».",
+     en:"Acquired in 1849 by Polish count Xavier Branicki, Montrésor preserves intact the furnishings and collections assembled by his family in the 19th century, including a gallery of Italian paintings and Polish memorabilia. The 16th-century Renaissance lodge, backed by medieval ramparts, overlooks the Indrois in one of France's 'most beautiful villages'."
+   },
+   highlights:[
+     {name:"Galerie de peintures italiennes",role:"Collection du comte Branicki, XVIIe-XVIIIe s.",year:"XIXe s.",wiki:"Château de Montrésor"},
+     {name:"Trésor polonais",role:"Argenterie et objets d'art de Pologne",year:"XIXe s.",wiki:"Château de Montrésor"},
+     {name:"Remparts médiévaux",role:"Enceinte du XIe siècle dominant l'Indrois",year:"XIe s.",wiki:"Château de Montrésor"}
+   ]},
+
+  // ═══════════════ CLASSIQUE ═══════════════
+  {id:27,name:{fr:"Château de Cheverny",en:"Château de Cheverny"},
+   address:"41700 Cheverny",
+   coords:{lat:47.5000,lng:1.4569},
+   website:"https://www.chateau-cheverny.fr",
+   hours:{fr:"Ouvert tous les jours 9h15–19h",en:"Open daily 9:15am–7pm"},
+   price:"Adulte 14,50 €",
+   epoque:{fr:"Classique",en:"Classical"},
+   types:{fr:["Classique"],en:["Classical"]},
+   wiki:"Château de Cheverny",
+   description:{
+     fr:"Chef-d'œuvre du style Louis XIII, Cheverny fut construit entre 1624 et 1634 par le comte Henri Hurault et sa femme Françoise de Chabot. La régularité de sa façade en tuffeau blanc, la pureté de ses proportions classiques et la richesse de ses appartements d'origine en font l'un des châteaux les mieux meublés de France. Il a inspiré Moulinsart, le château du capitaine Haddock dans Tintin.",
+     en:"A masterpiece of Louis XIII style, Cheverny was built between 1624 and 1634 by Count Henri Hurault and his wife Françoise de Chabot. The regularity of its white tuffeau façade, the purity of its classical proportions and the richness of its original apartments make it one of France's best-furnished châteaux. It inspired Moulinsart, Captain Haddock's castle in Tintin."
+   },
+   highlights:[
+     {name:"Appartements d'origine",role:"Mobilier Louis XIII et Régence intact depuis 4 siècles",year:"XVIIe s.",wiki:"Château de Cheverny"},
+     {name:"Salle d'armes",role:"Armures, tapisseries et tableaux de chasse",year:"XVIIe s.",wiki:"Château de Cheverny"},
+     {name:"Musée Tintin",role:"Exposition permanente dédiée à Hergé et Moulinsart",year:"XXe s.",wiki:"Château de Cheverny"}
+   ]},
+
+  {id:28,name:{fr:"Château de Serrant",en:"Château de Serrant"},
+   address:"49170 Saint-Georges-sur-Loire",
+   coords:{lat:47.3503,lng:-0.7211},
+   website:"https://www.chateau-serrant.net",
+   hours:{fr:"Ouvert du mardi au dimanche 10h–18h",en:"Open Tue–Sun 10am–6pm"},
+   price:"Adulte 13 €",
+   epoque:{fr:"Classique",en:"Classical"},
+   types:{fr:["Classique"],en:["Classical"]},
+   wiki:"Château de Serrant",
+   description:{
+     fr:"L'un des plus beaux châteaux de la Loire, Serrant fut construit entre le XVIe et le XVIIIe siècle en trois étapes cohérentes, donnant une façade d'une harmonie rare. Ses intérieurs sont parmi les plus riches du Val de Loire : tapisseries des Gobelins, mobilier d'époque, bibliothèque de 12 000 volumes et splendide chapelle funéraire de Jules Hardouin-Mansart.",
+     en:"One of the Loire's finest châteaux, Serrant was built in three harmonious stages from the 16th to the 18th century, achieving a remarkably unified façade. Its interiors rank among the richest in the Loire Valley: Gobelins tapestries, period furniture, a library of 12,000 volumes and a splendid funerary chapel by Jules Hardouin-Mansart."
+   },
+   highlights:[
+     {name:"Chapelle funéraire",role:"Mausolée baroque dessiné par Jules Hardouin-Mansart",year:"1700",wiki:"Château de Serrant"},
+     {name:"Bibliothèque",role:"12 000 volumes dont des manuscrits du XVIe s.",year:"XVIIIe s.",wiki:"Château de Serrant"},
+     {name:"Grande galerie",role:"Tapisseries des Gobelins du XVIIe siècle",year:"XVIIe s.",wiki:"Château de Serrant"}
+   ]},
+
+  {id:29,name:{fr:"Château du Lude",en:"Château du Lude"},
+   address:"Place François de Nicolaÿ, 72800 Le Lude",
+   coords:{lat:47.6483,lng:0.1544},
+   website:"https://www.lelude.com",
+   hours:{fr:"Ouvert du mardi au dimanche 10h–18h",en:"Open Tue–Sun 10am–6pm"},
+   price:"Adulte 13 €",
+   epoque:{fr:"Classique",en:"Classical"},
+   types:{fr:["Classique"],en:["Classical"]},
+   wiki:"Château du Lude (Sarthe)",
+   description:{
+     fr:"Construit sur les rives du Loir et remanié du XVe au XVIIIe siècle, le Lude offre une façade par aile qui représente chacun des grands styles : gothique flamboyant, Renaissance, Louis XIII et Louis XVI. Habité sans interruption depuis le XVe siècle par la même famille, il présente des intérieurs authentiques et préserve un jardin à la française exceptionnel.",
+     en:"Built on the banks of the Loir and remodelled from the 15th to the 18th century, Le Lude offers a wing for each great style: flamboyant Gothic, Renaissance, Louis XIII and Louis XVI. Continuously inhabited since the 15th century by the same family, it presents authentic interiors and preserves an exceptional formal French garden."
+   },
+   highlights:[
+     {name:"Quatre façades, quatre styles",role:"Du gothique flamboyant au Louis XVI",year:"XVe-XVIIIe s.",wiki:"Château du Lude"},
+     {name:"Jardins en terrasses",role:"Vue sur le Loir et parc à l'anglaise",year:"XVIIIe s.",wiki:"Château du Lude"},
+     {name:"Grand salon Louis XVI",role:"Mobilier et décors d'origine du XVIIIe siècle",year:"XVIIIe s.",wiki:"Château du Lude"}
+   ]},
+
+  {id:30,name:{fr:"Château de Montgeoffroy",en:"Château de Montgeoffroy"},
+   address:"49150 Mazé-Milon",
+   coords:{lat:47.4153,lng:-0.2519},
+   website:"https://www.chateaudemontgeoffroy.com",
+   hours:{fr:"Ouvert du mercredi au dimanche 10h–18h",en:"Open Wed–Sun 10am–6pm"},
+   price:"Adulte 12 €",
+   epoque:{fr:"Classique",en:"Classical"},
+   types:{fr:["Classique"],en:["Classical"]},
+   wiki:"Château de Montgeoffroy",
+   description:{
+     fr:"Joyau du XVIIIe siècle, Montgeoffroy fut construit en seulement deux ans (1772-1776) par le maréchal de Contades, gouverneur d'Alsace. Chef-d'œuvre rare de cohérence, il conserve l'intégralité de son mobilier Louis XVI d'origine, commandé auprès des plus grands ébénistes de l'époque — Jacob, Garnier, Gourdin — ainsi que sa vaisselle et ses tableaux.",
+     en:"A jewel of the 18th century, Montgeoffroy was built in just two years (1772–1776) by Marshal de Contades, governor of Alsace. A rare masterpiece of coherence, it preserves all its original Louis XVI furniture, commissioned from the greatest cabinet-makers of the time — Jacob, Garnier, Gourdin — along with its china and paintings."
+   },
+   highlights:[
+     {name:"Mobilier Louis XVI d'origine",role:"Ébénisterie de Jacob, Garnier et Gourdin",year:"1772-1776",wiki:"Château de Montgeoffroy"},
+     {name:"Cuisine du XVIIIe siècle",role:"Ustensiles et décors entièrement préservés",year:"XVIIIe s.",wiki:"Château de Montgeoffroy"},
+     {name:"Chapelle privative",role:"Décor baroque intact",year:"XVIIe s.",wiki:"Château de Montgeoffroy"}
+   ]},
+
+  {id:31,name:{fr:"Château de Beauregard",en:"Château de Beauregard"},
+   address:"41120 Cellettes",
+   coords:{lat:47.4997,lng:1.4944},
+   website:"https://www.beauregard-loire.com",
+   hours:{fr:"Ouvert tous les jours 9h30–18h30",en:"Open daily 9:30am–6:30pm"},
+   price:"Adulte 10,50 €",
+   epoque:{fr:"Classique",en:"Classical"},
+   types:{fr:["Classique"],en:["Classical"]},
+   wiki:"Château de Beauregard (Loir-et-Cher)",
+   description:{
+     fr:"Ancienne résidence de chasse de François Ier, Beauregard fut remanié au XVIIe siècle par Paul Ardier, contrôleur des guerres. Il conserve une salle unique au monde : la galerie des portraits, qui rassemble 327 portraits de personnages illustres des XVIe et XVIIe siècles, avec un dallage de Delft représentant une armée en marche.",
+     en:"A former hunting lodge of Francis I, Beauregard was remodelled in the 17th century by Paul Ardier, controller of wars. It preserves a room unique in the world: the Portrait Gallery, gathering 327 portraits of illustrious figures of the 16th and 17th centuries, with a Delft tile floor depicting a marching army."
+   },
+   highlights:[
+     {name:"Galerie des 327 portraits",role:"Collection unique de portraits des XVIe-XVIIe s.",year:"XVIIe s.",wiki:"Château de Beauregard (Loir-et-Cher)"},
+     {name:"Dallage de Delft",role:"Carrelage représentant une armée, 1646",year:"1646",wiki:"Château de Beauregard (Loir-et-Cher)"},
+     {name:"Cabinet des Grelots",role:"Décor intact de l'ancienne résidence royale",year:"XVIe s.",wiki:"Château de Beauregard (Loir-et-Cher)"}
+   ]},
+
+  {id:32,name:{fr:"Château de Brissac",en:"Château de Brissac"},
+   address:"49320 Brissac-Loire-Aubance",
+   coords:{lat:47.3583,lng:-0.4417},
+   website:"https://www.chateau-brissac.fr",
+   hours:{fr:"Ouvert du mercredi au lundi 10h–18h",en:"Open Wed–Mon 10am–6pm"},
+   price:"Adulte 14 €",
+   epoque:{fr:"Classique",en:"Classical"},
+   types:{fr:["Classique"],en:["Classical"]},
+   wiki:"Château de Brissac",
+   description:{
+     fr:"Habité sans interruption par la même famille depuis cinq siècles, Brissac est le château le plus haut de France avec ses sept étages et 204 pièces. Érigé à partir de 1611 sur les fondations d'une forteresse médiévale dont subsistent deux tours, il offre un intérieur somptueux : tapisseries, toiles flamandes, Gobelin et un théâtre privé du XIXe siècle.",
+     en:"Continuously inhabited by the same family for five centuries, Brissac is France's tallest château with seven floors and 204 rooms. Erected from 1611 on the foundations of a medieval fortress of which two towers survive, it offers sumptuous interiors: tapestries, Flemish paintings, Gobelin, and a 19th-century private theatre."
+   },
+   highlights:[
+     {name:"Théâtre privé",role:"Salle de spectacle du XIXe siècle avec décors peints",year:"XIXe s.",wiki:"Château de Brissac"},
+     {name:"Appartements des ducs",role:"204 pièces dont 7 étages habitables",year:"XVIIe s.",wiki:"Château de Brissac"},
+     {name:"Deux tours médiévales",role:"Vestiges de la forteresse du XVe siècle",year:"XVe s.",wiki:"Château de Brissac"}
+   ]},
+
+  {id:33,name:{fr:"Château de Ménars",en:"Château de Ménars"},
+   address:"41500 Ménars",
+   coords:{lat:47.6058,lng:1.4133},
+   website:"https://www.menars.fr/",
+   hours:{fr:"Ouvert de mai à septembre, 10h–18h",en:"Open May–September, 10am–6pm"},
+   price:"Adulte 8 €",
+   epoque:{fr:"Classique",en:"Classical"},
+   types:{fr:["Classique"],en:["Classical"]},
+   wiki:"Château de Ménars",
+   description:{
+     fr:"Acheté en 1760 par la marquise de Pompadour, favorite de Louis XV, Ménars fut transformé en résidence de prestige avec l'aide de l'architecte royal Jacques-Ange Gabriel, puis de son frère Jacques-Germain Soufflot, futur architecte du Panthéon. Le château domine la Loire depuis une terrasse à la française et possède des jardins à l'anglaise remarquables.",
+     en:"Purchased in 1760 by the Marquise de Pompadour, Louis XV's mistress, Ménars was transformed into a prestigious residence with the help of royal architect Jacques-Ange Gabriel, then of Jacques-Germain Soufflot, future architect of the Panthéon. The château dominates the Loire from a formal terrace and has remarkable English-style gardens."
+   },
+   highlights:[
+     {name:"Grande terrasse sur la Loire",role:"Vue panoramique dessinée par Soufflot",year:"XVIIIe s.",wiki:"Château de Ménars"},
+     {name:"Jardins à l'anglaise",role:"Fabriques et temples dessinés par Soufflot",year:"XVIIIe s.",wiki:"Château de Ménars"},
+     {name:"Appartements de Pompadour",role:"Décors Louis XV d'origine partiellement conservés",year:"XVIIIe s.",wiki:"Château de Ménars"}
+   ]},
+
+  {id:34,name:{fr:"Château de La Ferté-Saint-Aubin",en:"Château de La Ferté-Saint-Aubin"},
+   address:"1 Rue Saint-Hubert, 45240 La Ferté-Saint-Aubin",
+   coords:{lat:47.7197,lng:1.9456},
+   website:"https://www.chateau-ferte.com/fr",
+   hours:{fr:"Ouvert tous les jours 9h30–18h30",en:"Open daily 9:30am–6:30pm"},
+   price:"Adulte 13,50 €",
+   epoque:{fr:"Classique",en:"Classical"},
+   types:{fr:["Classique"],en:["Classical"]},
+   wiki:"Château de La Ferté-Saint-Aubin",
+   description:{
+     fr:"Château « en chantier » depuis le XVIIe siècle, La Ferté-Saint-Aubin n'a jamais été achevé, offrant ainsi un témoignage unique sur les techniques de construction du Grand Siècle. Ses salons présentent un décor intact et ses cuisines, avec leurs fourneaux en fonte et leur vaisselle, reconstituent la vie quotidienne d'une grande demeure. Un château vivant et pédagogique.",
+     en:"A château 'under construction' since the 17th century, La Ferté-Saint-Aubin was never completed, offering a unique insight into Grand Siècle building techniques. Its reception rooms preserve intact décor, and its kitchens — with cast-iron stoves and china — recreate daily life in a great house. A living, educational château."
+   },
+   highlights:[
+     {name:"Cuisines du XVIIe siècle",role:"Fours, fourneaux et ustensiles d'époque",year:"XVIIe s.",wiki:"Château de La Ferté-Saint-Aubin"},
+     {name:"Aile inachevée",role:"Charpente et échafaudages visibles comme en 1680",year:"XVIIe s.",wiki:"Château de La Ferté-Saint-Aubin"},
+     {name:"Parc à l'anglaise",role:"Étangs, pont chinois et fabriques sur 200 hectares",year:"XVIIIe s.",wiki:"Château de La Ferté-Saint-Aubin"}
+   ]},
+
+  // ═══════════════ ROMANTIQUE ═══════════════
+  {id:35,name:{fr:"Château du Rivau",en:"Château du Rivau"},
+   address:"37120 Lémeré",
+   coords:{lat:47.2139,lng:0.3217},
+   website:"https://www.chateaudurivau.com",
+   hours:{fr:"Ouvert tous les jours 10h–19h",en:"Open daily 10am–7pm"},
+   price:"Adulte 12,50 €",
+   epoque:{fr:"Romantique",en:"Romantic"},
+   types:{fr:["Romantique"],en:["Romantic"]},
+   wiki:"Château du Rivau",
+   description:{
+     fr:"Forteresse médiévale du XVe siècle, le Rivau est surtout célèbre pour ses jardins de conte de fées, reconstitués au XXIe siècle et dédiés à des légendes arthuriennes et des récits fantastiques. Ses 14 jardins thématiques, ses sculptures contemporaines et son potager de 600 roses médiévales en font l'une des curiosités les plus originales du Val de Loire.",
+     en:"A 15th-century medieval fortress, Rivau is best known for its fairy-tale gardens, recreated in the 21st century and devoted to Arthurian legends and fantastic tales. Its 14 themed gardens, contemporary sculptures and kitchen garden of 600 medieval roses make it one of the Loire Valley's most original curiosities."
+   },
+   highlights:[
+     {name:"14 jardins thématiques",role:"Légendes arthuriennes et contes revisités",year:"2003",wiki:"Château du Rivau"},
+     {name:"Potager des 600 roses médiévales",role:"Collection de roses anciennes",year:"2003",wiki:"Château du Rivau"},
+     {name:"Écuries de Jeanne d'Arc",role:"Où Jeanne fit ferrer ses chevaux avant Orléans",year:"XVe s.",wiki:"Château du Rivau"}
+   ]},
+
+  {id:36,name:{fr:"Château de Montpoupon",en:"Château de Montpoupon"},
+   address:"37460 Céré-la-Ronde",
+   coords:{lat:47.2444,lng:1.1919},
+   website:"https://www.montpoupon.com",
+   hours:{fr:"Ouvert du mercredi au dimanche 10h–18h",en:"Open Wed–Sun 10am–6pm"},
+   price:"Adulte 10 €",
+   epoque:{fr:"Romantique",en:"Romantic"},
+   types:{fr:["Romantique"],en:["Romantic"]},
+   wiki:"Château de Montpoupon",
+   description:{
+     fr:"Château médiéval restauré au XIXe siècle dans le style néo-gothique, Montpoupon est resté dans la même famille depuis le XVe siècle. Il abrite le Musée du Veneur, consacré à l'art de la vénerie, avec plus de 2 000 pièces : équipements de chasse à courre, tableaux, trophées, costumes et équipages du XVIIIe au XXe siècle.",
+     en:"A medieval château restored in 19th-century neo-Gothic style, Montpoupon has remained in the same family since the 15th century. It houses the Musée du Veneur, dedicated to the art of hunting, with over 2,000 pieces: fox-hunting equipment, paintings, trophies, costumes and packs from the 18th to 20th centuries."
+   },
+   highlights:[
+     {name:"Musée du Veneur",role:"2 000 pièces dédiées à la chasse à courre",year:"XIXe s.",wiki:"Château de Montpoupon"},
+     {name:"Tour médiévale",role:"Donjon du XVe siècle conservé",year:"XVe s.",wiki:"Château de Montpoupon"},
+     {name:"Logis néo-gothique",role:"Restauration romantique du XIXe siècle",year:"XIXe s.",wiki:"Château de Montpoupon"}
+   ]},
+
+  {id:37,name:{fr:"Château de Chémery",en:"Château de Chémery"},
+   address:"41700 Chémery",
+   coords:{lat:47.3500,lng:1.5278},
+   website:"https://www.chateaudechemery.fr/fr",
+   hours:{fr:"Ouvert du mardi au dimanche 10h–18h",en:"Open Tue–Sun 10am–6pm"},
+   price:"Adulte 7,50 €",
+   epoque:{fr:"Romantique",en:"Romantic"},
+   types:{fr:["Romantique"],en:["Romantic"]},
+   wiki:"Château de Chémery",
+   description:{
+     fr:"Château médiéval dont le logis du début du XVIe siècle fut intégré dans les grandes tours rondes d'une enceinte du XIVe siècle, Chémery offre un ensemble pittoresque et authentique. Au XIXe siècle, ses jardins furent réaménagés dans le goût romantique. Il est réputé pour son vignoble AOC Chémery et sa production de vin blanc de Touraine.",
+     en:"A medieval château whose early-16th-century lodge was integrated into the large round towers of a 14th-century enclosure, Chémery offers a picturesque and authentic ensemble. In the 19th century its gardens were redesigned in the Romantic taste. It is known for its AOC Chémery vineyard and Touraine white wine production."
+   },
+   highlights:[
+     {name:"Enceinte médiévale",role:"Tours rondes du XIVe siècle",year:"XIVe s.",wiki:"Château de Chémery"},
+     {name:"Jardins romantiques",role:"Réaménagement paysager du XIXe siècle",year:"XIXe s.",wiki:"Château de Chémery"},
+     {name:"Vignoble AOC Chémery",role:"Production de vin de Touraine sur le domaine",year:"XIXe s.",wiki:"Château de Chémery"}
+   ]},
+
+  {id:38,name:{fr:"Château de Luynes",en:"Château de Luynes"},
+   address:"37230 Luynes",
+   coords:{lat:47.3869,lng:0.5617},
+   website:"https://luynes.fr/chateau-luynes/",
+   hours:{fr:"Ouvert du mercredi au lundi 10h–18h",en:"Open Wed–Mon 10am–6pm"},
+   price:"Adulte 12 €",
+   epoque:{fr:"Romantique",en:"Romantic"},
+   types:{fr:["Romantique"],en:["Romantic"]},
+   wiki:"Château de Luynes",
+   description:{
+     fr:"Habité par la même famille depuis 800 ans, Luynes est l'un des rares châteaux ligériens à être réellement une résidence privée. Construit aux XIIe et XVe siècles sur un promontoire tuffier, il domine la Loire et le village. Au XIXe siècle, ses propriétaires y rassemblèrent des collections remarquables : tapisseries du XVe siècle, mobilier médiéval et Renaissance.",
+     en:"Inhabited by the same family for 800 years, Luynes is one of the rare Loire châteaux that is genuinely a private residence. Built in the 12th and 15th centuries on a tuffeau promontory, it dominates the Loire and the village. In the 19th century, its owners assembled remarkable collections: 15th-century tapestries, medieval and Renaissance furnishings."
+   },
+   highlights:[
+     {name:"Tapisseries du XVe siècle",role:"Série flamande d'une qualité exceptionnelle",year:"XVe s.",wiki:"Château de Luynes"},
+     {name:"Vue sur la Loire",role:"Promontoire dominant le val depuis le XIIe s.",year:"XIIe s.",wiki:"Château de Luynes"},
+     {name:"Grande salle médiévale",role:"Mobilier et décors d'origine",year:"XIIe-XVe s.",wiki:"Château de Luynes"}
+   ]},
+
+  {id:39,name:{fr:"Château de Lavardin",en:"Château de Lavardin"},
+   address:"72240 Lavardin",
+   coords:{lat:47.7531,lng:0.8644},
+   website:"https://www.lavardin.fr",
+   hours:{fr:"Accès libre, toute l'année",en:"Free access, year-round"},
+   price:"Entrée libre",
+   epoque:{fr:"Médiéval",en:"Medieval"},
+   types:{fr:["Médiéval"],en:["Medieval"]},
+   wiki:"Château de Lavardin",
+   description:{
+     fr:"Classé « l'une des plus belles ruines de France », Lavardin fut l'une des forteresses les plus puissantes du Moyen Âge. Son donjon du XIe siècle domine le Loir depuis un éperon rocheux. Saccagé par Henri IV en 1589, il ne fut jamais relevé. Ses ruines romantiques, ses fresques romanes dans l'église du village et le pittoresque Lavardin en font un site enchanteur.",
+     en:"Listed as 'one of France's most beautiful ruins', Lavardin was one of the most powerful medieval fortresses. Its 11th-century keep dominates the Loir from a rocky spur. Razed by Henri IV in 1589, it was never rebuilt. Its romantic ruins, the Romanesque frescoes in the village church and picturesque Lavardin make it an enchanting site."
+   },
+   highlights:[
+     {name:"Donjon du XIe siècle",role:"L'un des plus imposants donjons romans du Maine",year:"XIe s.",wiki:"Château de Lavardin"},
+     {name:"Ruines romantiques",role:"Classées parmi les plus belles de France",year:"XIIe-XIVe s.",wiki:"Château de Lavardin"},
+     {name:"Fresques romanes",role:"Dans l'église Saint-Genest du village",year:"XIIe s.",wiki:"Château de Lavardin"}
+   ]}
+];
+
+// ─── STATE ──────────────────────────────────────────────
+const S={
+  lang:localStorage.getItem('cl_lang')||'fr',
+  theme:localStorage.getItem('cl_theme')||'dark',
+  favs:JSON.parse(localStorage.getItem('cl_favs')||'[]'),
+  view:'list',prev:'list',filter:'all',query:'',mapDone:false,detail:null
+};
+const sv=()=>{localStorage.setItem('cl_lang',S.lang);localStorage.setItem('cl_theme',S.theme);localStorage.setItem('cl_favs',JSON.stringify(S.favs))};
+const isFav=id=>S.favs.includes(id);
+
+// ─── TRADUCTIONS ────────────────────────────────────────
+const t=k=>({
+  fr:{title:"Châteaux de la Loire",list:"Liste",map:"Carte",fav:"Favoris",quiz:"Quiz",settings:"Paramètres",
+      search:"Rechercher un château…",all:"Tous",
+      noFav:"Aucun favori pour l'instant.\nAjoutez des châteaux depuis la liste.",
+      noResult:"Aucun château trouvé",back:"Retour",itinerary:"Itinéraire",website:"Site web",
+      hours:"Horaires",price:"Tarif",address:"Adresse",highlights:"À découvrir",
+      castles:"châteaux",added:"Ajouté aux favoris",removed:"Retiré des favoris",dark:"Mode sombre",
+      quizSub:"10 questions sur les châteaux de la Loire",quizStart:"Commencer le quiz",
+      quizNext:"Suivant →",quizFinish:"Voir mon score",quizReplay:"Rejouer"},
+  en:{title:"Loire Valley Castles",list:"List",map:"Map",fav:"Favorites",quiz:"Quiz",settings:"Settings",
+      search:"Search a castle…",all:"All",
+      noFav:"No favorites yet.\nAdd castles from the list.",
+      noResult:"No castles found",back:"Back",itinerary:"Get Directions",website:"Website",
+      hours:"Hours",price:"Admission",address:"Address",highlights:"Highlights",
+      castles:"castles",added:"Added to favorites",removed:"Removed from favorites",dark:"Dark mode",
+      quizSub:"10 questions about Loire Valley castles",quizStart:"Start the quiz",
+      quizNext:"Next →",quizFinish:"See my score",quizReplay:"Play again"}
+})[S.lang][k]||k;
+
+// ─── WIKIPEDIA IMAGE LOADER ──────────────────────────────
+function loadWikiImg(wikiTitle, imgEl, size) {
+  if(!wikiTitle){return}
+  const px = size || 500;
+  const cacheKey = 'cl_img_' + wikiTitle;
+  const cached = localStorage.getItem(cacheKey);
+  if(cached){imgEl.src=cached;imgEl.style.opacity='1';return}
+  fetch('https://fr.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(wikiTitle),{headers:{'Api-User-Agent':'ChateauxLoireApp/1.0'}})
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.thumbnail&&d.thumbnail.source){
+        const url=d.thumbnail.source.replace(/\/\d+px-/,'/'+px+'px-');
+        try{localStorage.setItem(cacheKey,url)}catch(e){}
+        imgEl.src=url;
+        imgEl.onload=()=>imgEl.style.opacity='1';
+      }
+    }).catch(()=>{});
+}
+
+function makeThumb(cls,id,wikiTitle,w,h){
+  const wrap=document.createElement('div');
+  wrap.className=cls;
+  if(w!=='100%')wrap.style.width=w;
+  wrap.style.height=h+'px';
+  const img=document.createElement('img');
+  img.style.opacity='0';
+  img.alt='';
+  wrap.appendChild(img);
+  loadWikiImg(wikiTitle,img,w==='100%'?600:200);
+  return wrap;
+}
+
+// ─── INIT ────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded',()=>{
+  applyTheme();applyLang();renderList();buildNav();bindHdr();bindSettings();initQuiz();
+  document.getElementById('sinput').addEventListener('input',e=>{S.query=e.target.value;renderList()});
+  buildChips();updateDot();
+});
+
+function applyTheme(){
+  document.body.classList.toggle('light',S.theme==='light');
+  document.getElementById('tdark').checked=S.theme==='dark';
+}
+
+function applyLang(){
+  const els=['htitle','nl0','nl1','nl2','nl3','sttl','sdark'];
+  const vals=[t('title'),t('list'),t('map'),t('fav'),t('quiz'),t('settings'),t('dark')];
+  els.forEach((id,i)=>{const el=document.getElementById(id);if(el)el.textContent=vals[i]});
+  document.getElementById('blang').textContent=S.lang.toUpperCase();
+  const si=document.getElementById('sinput');if(si)si.placeholder=t('search');
+  // Quiz labels
+  const qt=document.getElementById('qtitle');if(qt)qt.textContent=t('quiz');
+  const qs=document.getElementById('qsub');if(qs)qs.textContent=t('quizSub');
+  const qb=document.getElementById('qstart-btn');if(qb)qb.textContent=t('quizStart');
+}
+
+function goTo(vid,chateau){
+  if(vid==='detail'){S.detail=chateau;S.prev=S.view}
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
+  document.getElementById('v'+vid).classList.add('on');
+  const nb=document.querySelector('.nb[data-v="'+vid+'"]');if(nb)nb.classList.add('on');
+  S.view=vid;
+  if(vid==='map')initMap();
+  if(vid==='favorites')renderFavs();
+  if(vid==='detail')renderDetail(chateau);
+  if(vid==='list')renderList();
+}
+
+function buildNav(){document.querySelectorAll('.nb').forEach(b=>b.addEventListener('click',()=>goTo(b.dataset.v)))}
+
+function bindHdr(){
+  document.getElementById('blang').addEventListener('click',()=>{
+    S.lang=S.lang==='fr'?'en':'fr';sv();applyLang();buildChips();
+    if(S.view==='list')renderList();
+    else if(S.view==='favorites')renderFavs();
+    else if(S.view==='detail'&&S.detail)renderDetail(S.detail);
+  });
+}
+
+function buildChips(){
+  const epoques=[...new Set(CS.map(c=>c.epoque[S.lang]))];
+  const order=S.lang==='fr'
+    ?['Médiéval','Renaissance','Classique','Romantique']
+    :['Medieval','Renaissance','Classical','Romantic'];
+  const sorted=order.filter(e=>epoques.includes(e));
+  const el=document.getElementById('chips');
+  el.innerHTML=[t('all'),...sorted].map(ep=>{
+    const v=ep===t('all')?'all':ep;
+    return'<button class="chip'+(S.filter===v?' on':'')+'" data-tp="'+v+'">'+ep+'</button>';
+  }).join('');
+  el.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{S.filter=c.dataset.tp;buildChips();renderList()}));
+}
+
+const norm=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+function filtered(){
+  return CS.filter(c=>{
+    const ok=S.filter==='all'||c.epoque[S.lang]===S.filter;
+    const q=norm(S.query);
+    return ok&&(!q||norm(c.name[S.lang]).includes(q)||norm(c.address).includes(q)||norm(c.epoque[S.lang]).includes(q));
+  });
+}
+
+function cardEl(c){
+  const div=document.createElement('div');
+  div.className='mc';div.dataset.id=c.id;
+  const thumb=makeThumb('mthumb',c.id,c.wiki,'100%',180);
+  const f=isFav(c.id);
+  const body=document.createElement('div');body.className='mcb';
+  body.innerHTML='<div class="mct"><div class="mcn">'+c.name[S.lang]+'</div><button class="fbtn'+(f?' on':'')+'" data-id="'+c.id+'">'+(f?'♥':'♡')+'</button></div>'
+    +'<div class="mcloc"><svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5.5" cy="4.5" r="1.8"/><path d="M5.5 11C5.5 11 1 6.8 1 4.5a4.5 4.5 0 0 1 9 0C10 6.8 5.5 11 5.5 11z"/></svg>'+c.address+'</div>'
+    +'<div class="mctags"><span class="tag">'+c.epoque[S.lang]+'</span></div>';
+  div.appendChild(thumb);div.appendChild(body);
+  div.addEventListener('click',e=>{if(e.target.closest('.fbtn'))return;goTo('detail',c)});
+  div.querySelector('.fbtn').addEventListener('click',e=>{e.stopPropagation();toggleFav(c.id,div)});
+  return div;
+}
+
+function toggleFav(id,cardEl){
+  if(isFav(id)){S.favs=S.favs.filter(f=>f!==id);toast(t('removed'))}else{S.favs.push(id);toast(t('added'))}
+  sv();updateDot();
+  document.querySelectorAll('.fbtn[data-id="'+id+'"]').forEach(b=>{b.classList.toggle('on',isFav(id));b.textContent=isFav(id)?'♥':'♡'});
+  const df=document.getElementById('dfav');if(df&&+df.dataset.id===id){df.classList.toggle('on',isFav(id));df.textContent=isFav(id)?'♥':'♡'}
+  if(S.view==='favorites')renderFavs();
+}
+function updateDot(){document.getElementById('ndot').classList.toggle('on',S.favs.length>0)}
+
+function renderList(){
+  const list=filtered(),el=document.getElementById('mlist');
+  el.innerHTML='';
+  if(!list.length){el.innerHTML='<div class="empty"><div class="eico">🏰</div><div class="etxt">'+t('noResult')+'</div></div>';return}
+  const cnt=document.createElement('div');cnt.className='cnt';cnt.textContent=list.length+' '+t('castles');el.appendChild(cnt);
+  list.forEach(c=>el.appendChild(cardEl(c)));
+}
+
+function renderFavs(){
+  const favs=CS.filter(c=>isFav(c.id)),el=document.getElementById('flist');
+  el.innerHTML='';
+  if(!favs.length){el.innerHTML='<div class="empty"><div class="eico">♡</div><div class="etxt">'+t('noFav')+'</div></div>';return}
+  favs.forEach(c=>el.appendChild(cardEl(c)));
+}
+
+function initMap(){
+  if(S.mapDone)return;S.mapDone=true;
+  setTimeout(()=>{
+    const map=L.map('map',{center:[47.45,1.05],zoom:7});
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
+    // Couleurs par époque
+    const epoqueColor={
+      'Médiéval':'#8b6914','Medieval':'#8b6914',
+      'Renaissance':'#c9a870','Renaissance':'#c9a870',
+      'Classique':'#7a9e7e','Classical':'#7a9e7e',
+      'Romantique':'#9e7a8e','Romantic':'#9e7a8e'
+    };
+    CS.forEach(c=>{
+      const col=epoqueColor[c.epoque.fr]||'#c9a870';
+      const ico=L.divIcon({className:'',
+        html:'<div style="width:28px;height:28px;background:'+col+';border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #0a0c0a;box-shadow:0 2px 8px rgba(0,0,0,.5)"></div>',
+        iconSize:[28,28],iconAnchor:[14,28],popupAnchor:[0,-30]});
+      L.marker([c.coords.lat,c.coords.lng],{icon:ico}).addTo(map)
+        .bindPopup('<div class="pname">'+c.name[S.lang]+'</div><div class="ptype">'+c.epoque[S.lang]+'</div><button class="pbtn" onclick="goTo(\'detail\',CS.find(x=>x.id==='+c.id+'))">Voir →</button>',{maxWidth:200});
+    });
+  },80);
+}
+
+function renderDetail(c){
+  const f=isFav(c.id);
+  const mapsUrl='https://maps.apple.com/?daddr='+c.coords.lat+','+c.coords.lng+'&dirflg=d';
+  const el=document.getElementById('dinn');
+  el.innerHTML='';
+
+  // Back
+  const back=document.createElement('div');back.className='dback';
+  back.innerHTML='<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13,4 7,10 13,16"/></svg><span class="dbacklbl">'+t('back')+'</span>';
+  back.onclick=()=>goTo(S.prev);
+  el.appendChild(back);
+
+  // Hero
+  const heroWrap=makeThumb('dhero-wrap',c.id,c.wiki,'100%',260);
+  el.appendChild(heroWrap);
+
+  // Body
+  const body=document.createElement('div');body.className='dbody';
+  body.innerHTML=
+    '<div class="dr1"><div class="dname">'+c.name[S.lang]+'</div>'
+    +'<button class="dfav'+(f?' on':'')+'" id="dfav" data-id="'+c.id+'">'+(f?'♥':'♡')+'</button></div>'
+    +'<div class="dtags"><span class="tag">'+c.epoque[S.lang]+'</span></div>'
+    +'<p class="ddesc">'+c.description[S.lang]+'</p>'
+    +'<div class="dacts">'
+      +'<button class="abtn agold" id="dnav"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><polygon points="7,1 1,13 7,10.5 13,13"/></svg>'+t('itinerary')+'</button>'
+      +'<button class="abtn aplain" id="dweb"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="6"/><path d="M1 7h12M7 1c-2.5 2-3 4-3 6s.5 4 3 6M7 1c2.5 2 3 4 3 6s-.5 4-3 6"/></svg>'+t('website')+'</button>'
+    +'</div>'
+    +'<div class="iblock">'
+      +'<div class="irow"><span class="iico">📍</span><div><div class="ilbl">'+t('address')+'</div><div class="ival">'+c.address+'</div><div class="igps">'+c.coords.lat.toFixed(4)+'° N · '+Math.abs(c.coords.lng).toFixed(4)+'° '+(c.coords.lng<0?'O':'E')+'</div></div></div>'
+      +'<div class="irow"><span class="iico">🕐</span><div><div class="ilbl">'+t('hours')+'</div><div class="ival">'+c.hours[S.lang]+'</div></div></div>'
+      +'<div class="irow"><span class="iico">🎫</span><div><div class="ilbl">'+t('price')+'</div><div class="ival">'+c.price+'</div></div></div>'
+    +'</div>'
+    +'<div class="atttl">'+t('highlights')+'</div>';
+
+  // Highlights scroll
+  const scroll=document.createElement('div');scroll.className='ascroll';
+  c.highlights.forEach(h=>{
+    const ac=document.createElement('div');ac.className='ac';
+    const thumb=makeThumb('acthumb',c.id,h.wiki,'148px',110);
+    ac.appendChild(thumb);
+    const info=document.createElement('div');info.className='acinfo';
+    info.innerHTML='<div class="acname">'+h.name+'</div><div class="acar">'+h.role+'</div><div class="acyr">'+h.year+'</div>';
+    ac.appendChild(info);
+    scroll.appendChild(ac);
+  });
+  body.appendChild(scroll);
+  el.appendChild(body);
+
+  document.getElementById('dfav').onclick=()=>toggleFav(c.id);
+  document.getElementById('dnav').onclick=()=>window.open(mapsUrl,'_blank');
+  document.getElementById('dweb').onclick=()=>window.open(c.website,'_blank');
+  document.getElementById('vdetail').scrollTop=0;
+}
+
+function bindSettings(){
+  const ov=document.getElementById('sov');
+  document.getElementById('bset').onclick=()=>ov.classList.add('on');
+  document.getElementById('sclose').onclick=()=>ov.classList.remove('on');
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('on')});
+  document.getElementById('tdark').addEventListener('change',e=>{S.theme=e.target.checked?'dark':'light';sv();applyTheme()});
+}
+
+// ─── QUIZ ────────────────────────────────────────────────
+const QUIZ_QUESTIONS = [
+  {q:{fr:"Quel château possède le célèbre escalier à double révolution ?",en:"Which castle has the famous double-helix staircase?"},
+   a:{fr:"Chambord",en:"Chambord"},
+   choices:{fr:["Chambord","Chenonceau","Blois","Amboise"],en:["Chambord","Chenonceau","Blois","Amboise"]},
+   fact:{fr:"L'escalier de Chambord est attribué à Léonard de Vinci : deux personnes peuvent se croiser sans jamais se voir.",en:"Chambord's staircase is attributed to Leonardo da Vinci: two people can pass each other without ever meeting."}},
+
+  {q:{fr:"Dans quel château Jeanne d'Arc reconnut-elle Charles VII en 1429 ?",en:"In which castle did Joan of Arc recognise Charles VII in 1429?"},
+   a:{fr:"Chinon",en:"Chinon"},
+   choices:{fr:["Chinon","Angers","Loches","Langeais"],en:["Chinon","Angers","Loches","Langeais"]},
+   fact:{fr:"C'est à Chinon que Jeanne d'Arc identifia le dauphin dissimulé parmi ses courtisans, lançant la reconquête du royaume.",en:"It was at Chinon that Joan of Arc identified the Dauphin hidden among his courtiers, launching the reconquest of the kingdom."}},
+
+  {q:{fr:"Quel château est surnommé « le château des Dames » ?",en:"Which castle is nicknamed 'the Ladies' Castle'?"},
+   a:{fr:"Chenonceau",en:"Chenonceau"},
+   choices:{fr:["Chenonceau","Ussé","Villandry","Azay-le-Rideau"],en:["Chenonceau","Ussé","Villandry","Azay-le-Rideau"]},
+   fact:{fr:"Chenonceau fut façonné par des femmes illustres : Katherine Briçonnet, Diane de Poitiers et Catherine de Médicis.",en:"Chenonceau was shaped by remarkable women: Katherine Briçonnet, Diane de Poitiers and Catherine de Medici."}},
+
+  {q:{fr:"Quel est le plus vaste château du Val de Loire avec 426 pièces ?",en:"Which is the largest Loire Valley castle with 426 rooms?"},
+   a:{fr:"Chambord",en:"Chambord"},
+   choices:{fr:["Chambord","Blois","Brissac","Serrant"],en:["Chambord","Blois","Brissac","Serrant"]},
+   fact:{fr:"Chambord compte 426 pièces, 84 escaliers et 365 cheminées — une pour chaque jour de l'année !",en:"Chambord has 426 rooms, 84 staircases and 365 chimneys — one for each day of the year!"}},
+
+  {q:{fr:"Dans quel château fut assassiné le duc de Guise en 1588 ?",en:"In which castle was the Duke of Guise assassinated in 1588?"},
+   a:{fr:"Blois",en:"Blois"},
+   choices:{fr:["Blois","Amboise","Chinon","Angers"],en:["Blois","Amboise","Chinon","Angers"]},
+   fact:{fr:"Henri III fit assassiner le duc de Guise à Blois en 1588. Catherine de Médicis, qui y habitait, mourut quelques jours plus tard.",en:"Henri III had the Duke of Guise assassinated at Blois in 1588. Catherine de Medici, who lived there, died a few days later."}},
+
+  {q:{fr:"Quel château a inspiré Moulinsart, le château de Tintin ?",en:"Which castle inspired Moulinsart, Tintin's castle?"},
+   a:{fr:"Cheverny",en:"Cheverny"},
+   choices:{fr:["Cheverny","Serrant","Brissac","Beauregard"],en:["Cheverny","Serrant","Brissac","Beauregard"]},
+   fact:{fr:"Hergé s'inspira de la façade de Cheverny pour dessiner Moulinsart. Le château lui consacre aujourd'hui un musée permanent.",en:"Hergé drew on Cheverny's façade to design Moulinsart. The castle now dedicates a permanent museum to Tintin."}},
+
+  {q:{fr:"Qui fit construire le château d'Angers au XIIIe siècle ?",en:"Who built Château d'Angers in the 13th century?"},
+   a:{fr:"Louis IX (Saint Louis)",en:"Louis IX (Saint Louis)"},
+   choices:{fr:["Louis IX (Saint Louis)","Philippe II Auguste","Charles VII","Louis XI"],en:["Louis IX (Saint Louis)","Philip II Augustus","Charles VII","Louis XI"]},
+   fact:{fr:"Angers fut bâti entre 1228 et 1238 par Louis IX. Ses 17 tours en schiste alternant tuffeau blanc en font une forteresse unique.",en:"Angers was built between 1228 and 1238 by Louis IX. Its 17 schist towers banded with white tuffeau make it a unique fortress."}},
+
+  {q:{fr:"Dans quel château Charles VIII et Anne de Bretagne se marièrent-ils en secret en 1491 ?",en:"In which castle did Charles VIII and Anne of Brittany secretly marry in 1491?"},
+   a:{fr:"Langeais",en:"Langeais"},
+   choices:{fr:["Langeais","Amboise","Chinon","Blois"],en:["Langeais","Amboise","Chinon","Blois"]},
+   fact:{fr:"Le mariage de Charles VIII et Anne de Bretagne à Langeais le 6 décembre 1491 unit définitivement la Bretagne à la France.",en:"The marriage of Charles VIII and Anne of Brittany at Langeais on 6 December 1491 permanently united Brittany with France."}},
+
+  {q:{fr:"Quel château fut offert par Catherine de Médicis à Diane de Poitiers ?",en:"Which castle did Catherine de Medici give to Diane de Poitiers?"},
+   a:{fr:"Chaumont-sur-Loire",en:"Chaumont-sur-Loire"},
+   choices:{fr:["Chaumont-sur-Loire","Ussé","Valençay","Montsoreau"],en:["Chaumont-sur-Loire","Ussé","Valençay","Montsoreau"]},
+   fact:{fr:"Catherine de Médicis força Diane de Poitiers à échanger Chenonceau contre Chaumont, que la favorite n'apprécia guère.",en:"Catherine de Medici forced Diane de Poitiers to exchange Chenonceau for Chaumont, which the favourite did not particularly like."}},
+
+  {q:{fr:"Quel château a inspiré le conte de « La Belle au bois dormant » à Charles Perrault ?",en:"Which castle inspired Charles Perrault's 'Sleeping Beauty'?"},
+   a:{fr:"Ussé",en:"Ussé"},
+   choices:{fr:["Ussé","Rivau","Montsoreau","Luynes"],en:["Ussé","Rivau","Montsoreau","Luynes"]},
+   fact:{fr:"Ussé, adossé à la forêt de Chinon, inspira Perrault pour son conte. Des automates y reconstituent aujourd'hui la scène.",en:"Ussé, backed against the Chinon forest, inspired Perrault's tale. Automatons recreate the fairy-tale scene inside today."}},
+
+  {q:{fr:"Dans quel château Léonard de Vinci passa-t-il ses trois dernières années de vie ?",en:"In which castle did Leonardo da Vinci spend his last three years?"},
+   a:{fr:"Clos Lucé, Amboise",en:"Clos Lucé, Amboise"},
+   choices:{fr:["Clos Lucé, Amboise","Chambord","Blois","Chinon"],en:["Clos Lucé, Amboise","Chambord","Blois","Chinon"]},
+   fact:{fr:"Léonard de Vinci vécut au Clos Lucé de 1516 à 1519, invité par François Ier. Il y mourut et fut inhumé à la chapelle Saint-Hubert.",en:"Leonardo da Vinci lived at Clos Lucé from 1516 to 1519, invited by Francis I. He died there and was buried at the Saint-Hubert chapel."}},
+
+  {q:{fr:"Quel écrivain surnomma Azay-le-Rideau « diamant de la Renaissance » ?",en:"Which writer called Azay-le-Rideau a 'Renaissance diamond'?"},
+   a:{fr:"Honoré de Balzac",en:"Honoré de Balzac"},
+   choices:{fr:["Honoré de Balzac","Victor Hugo","Alexandre Dumas","Ronsard"],en:["Honoré de Balzac","Victor Hugo","Alexandre Dumas","Ronsard"]},
+   fact:{fr:"Balzac, né à Tours, admirait passionnément les châteaux ligériens. Azay-le-Rideau, avec son reflet dans l'Indre, est l'un des plus beaux.",en:"Balzac, born in Tours, passionately admired the Loire châteaux. Azay-le-Rideau, with its reflection in the Indre, is one of the finest."}},
+
+  {q:{fr:"Quel château est le plus haut de France avec 7 étages et 204 pièces ?",en:"Which is France's tallest castle with 7 floors and 204 rooms?"},
+   a:{fr:"Brissac",en:"Brissac"},
+   choices:{fr:["Brissac","Serrant","Cheverny","Ménars"],en:["Brissac","Serrant","Cheverny","Ménars"]},
+   fact:{fr:"Brissac est habité par la même famille depuis cinq siècles. Il possède un théâtre privé du XIXe siècle toujours en état.",en:"Brissac has been inhabited by the same family for five centuries. It has a 19th-century private theatre still in working order."}},
+
+  {q:{fr:"Quelle célèbre marquise acheta le château de Ménars en 1760 ?",en:"Which famous marquise bought Château de Ménars in 1760?"},
+   a:{fr:"La marquise de Pompadour",en:"The Marquise de Pompadour"},
+   choices:{fr:["La marquise de Pompadour","Marie-Antoinette","Diane de Poitiers","Marie de Médicis"],en:["The Marquise de Pompadour","Marie-Antoinette","Diane de Poitiers","Marie de Medici"]},
+   fact:{fr:"Pompadour, favorite de Louis XV, fit transformer Ménars avec l'aide de Gabriel et Soufflot, futur architecte du Panthéon.",en:"Pompadour, Louis XV's mistress, had Ménars transformed with the help of Gabriel and Soufflot, future architect of the Panthéon."}},
+
+  {q:{fr:"Dans quel château est conservée la Tenture de l'Apocalypse ?",en:"In which castle is the Apocalypse Tapestry preserved?"},
+   a:{fr:"Angers",en:"Angers"},
+   choices:{fr:["Angers","Loches","Saumur","Langeais"],en:["Angers","Loches","Saumur","Langeais"]},
+   fact:{fr:"La Tenture de l'Apocalypse d'Angers, commandée au XIVe siècle, est le plus grand ensemble de tapisseries médiévales du monde.",en:"The Apocalypse Tapestry at Angers, commissioned in the 14th century, is the world's largest surviving medieval tapestry cycle."}},
+
+  {q:{fr:"Quel château possède une galerie de 327 portraits de personnages illustres ?",en:"Which castle has a gallery of 327 portraits of famous figures?"},
+   a:{fr:"Beauregard",en:"Beauregard"},
+   choices:{fr:["Beauregard","Cheverny","Serrant","Montgeoffroy"],en:["Beauregard","Cheverny","Serrant","Montgeoffroy"]},
+   fact:{fr:"La galerie de Beauregard est unique au monde, avec 327 portraits et un dallage de Delft représentant une armée datant de 1646.",en:"Beauregard's gallery is unique in the world, with 327 portraits and a 1646 Delft tile floor depicting a marching army."}},
+
+  {q:{fr:"Pour quel ministre de Napoléon le château de Valençay fut-il acheté en 1803 ?",en:"For which of Napoleon's ministers was Valençay bought in 1803?"},
+   a:{fr:"Talleyrand",en:"Talleyrand"},
+   choices:{fr:["Talleyrand","Fouché","Cambacérès","Murat"],en:["Talleyrand","Fouché","Cambacérès","Murat"]},
+   fact:{fr:"Napoléon ordonna à Talleyrand d'acheter Valençay pour recevoir dignement les souverains étrangers en visite diplomatique.",en:"Napoleon ordered Talleyrand to buy Valençay to suitably receive foreign sovereigns on diplomatic visits."}},
+
+  {q:{fr:"Quel château est réputé pour ses extraordinaires jardins en 9 carrés de légumes et fleurs ?",en:"Which castle is famous for its extraordinary gardens of 9 vegetable and flower squares?"},
+   a:{fr:"Villandry",en:"Villandry"},
+   choices:{fr:["Villandry","Chaumont","Rivau","Ussé"],en:["Villandry","Chaumont","Rivau","Ussé"]},
+   fact:{fr:"Les jardins de Villandry furent reconstitués au début du XXe s. par le Dr Carvallo. Le potager ornemental est leur chef-d'œuvre.",en:"Villandry's gardens were recreated in the early 20th century by Dr Carvallo. The ornamental kitchen garden is their masterpiece."}},
+
+  {q:{fr:"Dans quel château Agnès Sorel, première favorite officielle d'un roi, résida-t-elle ?",en:"In which castle did Agnès Sorel, the first official royal mistress, reside?"},
+   a:{fr:"Loches",en:"Loches"},
+   choices:{fr:["Loches","Chinon","Langeais","Montsoreau"],en:["Loches","Chinon","Langeais","Montsoreau"]},
+   fact:{fr:"Agnès Sorel, favorite de Charles VII, vécut à Loches. Son tombeau, chef-d'œuvre du XVe siècle, y est toujours conservé.",en:"Agnès Sorel, Charles VII's mistress, lived at Loches. Her tomb, a 15th-century masterpiece, is still preserved there."}},
+
+  {q:{fr:"Quelle rivière coule sous la Grande Galerie du château de Chenonceau ?",en:"Which river flows beneath Chenonceau's Grande Galerie?"},
+   a:{fr:"Le Cher",en:"The Cher"},
+   choices:{fr:["Le Cher","La Loire","L'Indre","Le Loir"],en:["The Cher","The Loire","The Indre","The Loir"]},
+   fact:{fr:"La Grande Galerie de 45 mètres du château de Chenonceau enjambe le Cher, faisant de ce château le plus visité après Versailles.",en:"Chenonceau's 45-metre Grande Galerie spans the Cher river, making it France's most visited château after Versailles."}}
+];
+
+let QZ = {questions:[],idx:0,score:0};
+
+function initQuiz(){
+  document.getElementById('qstart-btn').addEventListener('click',startQuiz);
+  document.getElementById('qnext').addEventListener('click',nextQuestion);
+  document.getElementById('qreplay').addEventListener('click',startQuiz);
+}
+
+function shuffleArr(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+function startQuiz(){
+  QZ.questions=shuffleArr([...QUIZ_QUESTIONS]).slice(0,10);
+  QZ.idx=0;QZ.score=0;
+  document.getElementById('qhome').style.display='none';
+  document.getElementById('qresult').classList.remove('on');
+  document.getElementById('qgame').classList.add('on');
+  showQuestion();
+}
+
+function showQuestion(){
+  const q=QZ.questions[QZ.idx];
+  const total=QZ.questions.length;
+  // Progrès
+  document.getElementById('qprog-fill').style.width=((QZ.idx/total)*100)+'%';
+  document.getElementById('qnum').textContent=(S.lang==='fr'?'Question ':'Question '+(QZ.idx+1)+' / ')+''+(QZ.idx+1)+' / '+total;
+  document.getElementById('qquestion').textContent=q.q[S.lang];
+  document.getElementById('qfeedback').classList.remove('on');
+  document.getElementById('qfeedback').textContent='';
+  document.getElementById('qnext').classList.remove('on');
+  // Mélanger les choix
+  const choices=shuffleArr([...q.choices[S.lang]]);
+  const el=document.getElementById('qchoices');
+  el.innerHTML='';
+  choices.forEach(c=>{
+    const btn=document.createElement('button');
+    btn.className='qchoice';
+    btn.textContent=c;
+    btn.addEventListener('click',()=>answerQuestion(c,q,btn));
+    el.appendChild(btn);
+  });
+}
+
+function answerQuestion(chosen,q,btn){
+  const correct=q.a[S.lang];
+  const isOk=chosen===correct;
+  if(isOk)QZ.score++;
+  // Colorier les boutons
+  document.querySelectorAll('.qchoice').forEach(b=>{
+    b.classList.add('disabled');
+    if(b.textContent===correct)b.classList.add('correct');
+    else if(b===btn&&!isOk)b.classList.add('wrong');
+  });
+  // Feedback
+  const fb=document.getElementById('qfeedback');
+  fb.textContent=(isOk?'✓ ':'✗ ')+q.fact[S.lang];
+  fb.classList.add('on');
+  // Bouton suivant / terminer
+  const nxt=document.getElementById('qnext');
+  const isLast=QZ.idx===QZ.questions.length-1;
+  nxt.textContent=isLast?t('quizFinish'):t('quizNext');
+  nxt.classList.add('on');
+}
+
+function nextQuestion(){
+  QZ.idx++;
+  if(QZ.idx>=QZ.questions.length){showResult();return}
+  showQuestion();
+}
+
+function showResult(){
+  document.getElementById('qgame').classList.remove('on');
+  const res=document.getElementById('qresult');
+  res.classList.add('on');
+  const s=QZ.score,total=QZ.questions.length;
+  document.getElementById('qscore-num').textContent=s;
+  document.getElementById('qscore-lbl').textContent='/ '+total;
+  const ico=s>=9?'🏆':s>=7?'🥇':s>=5?'🥈':s>=3?'🥉':'🎓';
+  document.getElementById('qscore-ico').textContent=ico;
+  const msgs={fr:[
+    s>=9?"Exceptionnel ! Vous êtes un véritable expert des châteaux de la Loire.":
+    s>=7?"Très bien ! Vous connaissez parfaitement ce patrimoine extraordinaire.":
+    s>=5?"Pas mal ! Encore quelques visites et vous serez incollable.":
+    s>=3?"Vous avez encore de belles découvertes à faire dans le Val de Loire !":
+    "Les châteaux n'ont plus de secrets pour vous… à condition de les visiter !"
+  ],en:[
+    s>=9?"Exceptional! You're a true Loire Valley castle expert.":
+    s>=7?"Very well! You know this extraordinary heritage perfectly.":
+    s>=5?"Not bad! A few more visits and you'll be unbeatable.":
+    s>=3?"You still have wonderful discoveries to make in the Loire Valley!":
+    "The castles have no secrets for you… as long as you visit them!"
+  ]};
+  document.getElementById('qscore-msg').textContent=msgs[S.lang][0];
+  document.getElementById('qreplay').textContent=t('quizReplay');
+  document.getElementById('qprog-fill').style.width='100%';
+}
+
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('on');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('on'),2000)}
+</script>
+<script src="capacitor.js" onerror="void(0)"></script>
+</body>
+</html>

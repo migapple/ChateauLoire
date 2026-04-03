@@ -1,0 +1,17 @@
+{
+  "appId": "com.michel.garlandat.chateauxloire",
+  "appName": "Châteaux de la Loire",
+  "webDir": "App/public",
+  "bundledWebRuntime": false,
+  "backgroundColor": "#0a0c0a",
+  "ios": {
+    "backgroundColor": "#0a0c0a",
+    "contentInset": "automatic",
+    "scrollEnabled": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0
+    }
+  }
+}
